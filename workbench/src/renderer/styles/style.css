@@ -10,6 +10,8 @@
   --bootstrap-gray-300: #dee2e6;
   --lagunita-light: #009AB4; /* From Stanford brand guidelines. Suitable for non-text elements only. */
   --lagunita-light-opacity-50: #009AB480; /* Equivalent to Lagunita Light with 50% opacity (for Bootstrap-style focus indicators). */
+  --palo-verde-dark: #017E7C;
+  --palo-verde-dark-opacity-50: #017E7C80; /* Equivalent to Palo Verde Dark with 50% opacity (for Bootstrap-style focus indicators). */
 }
 
 /*
@@ -862,7 +864,6 @@ input[type=text]::placeholder {
 
 /* Manage Plugins modal */
 .plugin-modal {
-  width: 40rem;
   form {
     & > div,
     & > button {
@@ -925,4 +926,111 @@ code {
 
 .text-italic {
   font-style: italic;
+}
+
+/* Plugin Registry Cards */
+
+.plugin-modal-button {
+  color: white;
+  background-color: var(--palo-verde-dark);
+  border-color: var(--palo-verde-dark);
+  &:hover {
+    color: var(--palo-verde-dark);
+    background-color: white;
+    border-color: var(--palo-verde-dark);
+  }
+  &.active {
+    color: var(--palo-verde-dark);
+    background-color: white;
+    border-color: var(--palo-verde-dark);
+  }
+}
+
+.plugin-description {
+  font-size: 0.875rem;
+}
+
+.plugin-modal-nav {
+  padding: 0;
+  border-right: 1px solid var(--bs-modal-header-border-color);
+}
+
+.plugin-modal-nav-item > a.nav-link {
+  color: var(--palo-verde-dark);
+  background-color: white;
+  margin: 0;
+  padding: 0.5rem;
+  border-radius: 0;
+  &:hover {
+    color: white;
+    background-color: var(--palo-verde-dark);
+  }
+  &.active {
+    color: white;
+    background-color: var(--palo-verde-dark);
+  }
+}
+
+.registry-pane {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    border-left: 1px solid var(--bs-modal-header-border-color);
+}
+
+.plugin-pane {
+    padding-bottom: 2rem;
+}
+
+.install-pane {
+    border-top: 1px solid var(--bs-modal-header-border-color);
+}
+
+.plugin-table > tbody > tr > td {
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+}
+
+.registry-list {
+    padding: 0;
+}
+
+.registry-list-group .registry-list-group-item {
+  font-size: 0.875rem;
+  text-align: start;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  border-bottom: 1px solid rgba(0,0,0,.125);
+  border-radius: 0;
+  margin-bottom: 0;
+  padding: 0.5rem;;
+  &.plugin-registry-button {
+    display: flex;
+    align-items: center;
+    color: var(--palo-verde-dark);
+    background-color: white;
+    font-weight: 600;
+    &:hover {
+      color: white;
+      background-color: var(--palo-verde-dark);
+    }
+    &.active {
+      color: white;
+      background-color: var(--palo-verde-dark);
+    }
+  }
+}
+
+.hidden-input {
+    display: none;
+}
+
+.registry-install-form {
+  & form > div {
+    & > div, & > button {
+      margin-top: 1rem;
+    }
+  }
 }

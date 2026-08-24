@@ -3,10 +3,17 @@ import PropTypes from 'prop-types';
 
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import Nav from 'react-bootstrap/Nav';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
+import TabPane from 'react-bootstrap/TabPane';
+import TabContent from 'react-bootstrap/TabContent';
+import TabContainer from 'react-bootstrap/TabContainer';
 import { useTranslation } from 'react-i18next';
 import {
   MdCheckCircleOutline,
@@ -16,6 +23,8 @@ import {
 
 import { openLinkInBrowser } from '../../utils';
 import { ipcMainChannels } from '../../../main/ipcMainChannels';
+
+import PluginRegistryTab from './PluginRegistryPane';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
 
@@ -268,7 +277,6 @@ export default function PluginModal(props) {
     event.currentTarget.classList.remove('input-dragging');
   }
 
-
   const selectFile = async (event) => {
     const data = await ipcRenderer.invoke(
       ipcMainChannels.SHOW_OPEN_DIALOG, { properties: ['openFile'] }
@@ -302,6 +310,7 @@ export default function PluginModal(props) {
   }, [installLoading, uninstallLoading]);
 
   const { t } = useTranslation();
+
 
   let pluginFields;
   if (installFrom === 'url') {
@@ -409,17 +418,85 @@ export default function PluginModal(props) {
 
   const pluginDocsURL = "https://invest.readthedocs.io/en/latest/plugins.html";
   const pluginRegistryURL = "https://natcap.github.io/invest-plugin-registry/";
-  let modalBody = (
-    <Modal.Body>
+
+  let installForm = (
+    <>
+      <Form.Group>
+        <Form.Text
+          as="span"
+          id="plugin-installation-risk-statement"
+          className="plugin-form-text"
+        >
+          {t('As with any third-party software, installing a plugin for use with InVEST '
+            + 'may pose a risk to your data, computer, and/or network. Please make sure '
+            + 'you trust the authors of the plugin you are installing. If you are '
+            + 'installing from a git URL, you are encouraged to review the source code, '
+            + 'which can change over time.')}
+        </Form.Text>
+      </Form.Group>
+      <Form.Group>
+        <Form.Check
+          id="user-acknowledgment-checkbox"
+          label={t('I acknowledge and accept the risks associated with installing this plugin.')}
+          value={userAcknowledgment}
+          onChange={(event) => setUserAcknowledgment(event.target.checked)}
+          aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
+        />
+      </Form.Group>
+      {
+        userAcknowledgmentError
+        &&
+        <Form.Text
+          as="span"
+          id="user-acknowledgment-error"
+          className="plugin-error plugin-user-acknowledgment-error"
+        >
+          {t('Error: Before installing a plugin, you must agree to the terms by selecting the checkbox.')}
+        </Form.Text>
+      }
+      <Button
+        disabled={installLoading}
+        onClick={handleAddPluginClick}
+        aria-describedby="plugin-installation-duration-notice"
+      >
+        {
+          installLoading ? (
+            <div className="adding-button">
+              <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
+                <span className="visually-hidden">{t('Adding plugin')}</span>
+              </Spinner>
+              {t(statusMessage)}
+            </div>
+          ) : t('Add')
+        }
+      </Button>
+      <Form.Text
+        as="span"
+        muted
+        id="plugin-installation-duration-notice"
+        className="plugin-form-text"
+      >
+        {t('This may take several minutes.')}
+      </Form.Text>
+      <div aria-live="polite">
+        { installSuccess &&
+          <Form.Text
+            as="span"
+            className="plugin-success"
+          >
+            <MdCheckCircleOutline />
+            {t('Successfully installed plugin')}
+          </Form.Text>
+        }
+      </div>
+    </>
+  )
+
+  let manualInstallTab = (
+    <>
       <div>
+        <h5 id="add-plugin-form-title" className="mb-3">{t('Manually Install a Plugin')}</h5>
         <p>
-          {t('Explore available plugins on our ')}
-          <a
-            href={pluginRegistryURL}
-            title={pluginRegistryURL}
-            aria-label={t("Community Plugin Registry (opens in web browser)")}
-            onClick={openLinkInBrowser}
-          >{t("Community Plugin Registry")}</a>.
           {t(' For more information about creating a plugin, read our ')}
           <a
             href={pluginDocsURL}
@@ -431,7 +508,6 @@ export default function PluginModal(props) {
       </div>
       <hr />
       <Form aria-labelledby="add-plugin-form-title">
-        <h5 id="add-plugin-form-title" className="mb-3">{t('Add a plugin')}</h5>
         <Form.Group>
           <Form.Label htmlFor="installFrom">{t('Install from')}</Form.Label>
           <Form.Select
@@ -444,78 +520,15 @@ export default function PluginModal(props) {
           </Form.Select>
         </Form.Group>
         {pluginFields}
-        <Form.Group>
-          <Form.Text
-            as="span"
-            id="plugin-installation-risk-statement"
-            className="plugin-form-text"
-          >
-            {t('As with any third-party software, installing a plugin for use with InVEST '
-              + 'may pose a risk to your data, computer, and/or network. Please make sure '
-              + 'you trust the authors of the plugin you are installing. If you are '
-              + 'installing from a git URL, you are encouraged to review the source code, '
-              + 'which can change over time.')}
-          </Form.Text>
-        </Form.Group>
-        <Form.Group>
-          <Form.Check
-            id="user-acknowledgment-checkbox"
-            label={t('I acknowledge and accept the risks associated with installing this plugin.')}
-            value={userAcknowledgment}
-            onChange={(event) => setUserAcknowledgment(event.target.checked)}
-            aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
-          />
-        </Form.Group>
-        {
-          userAcknowledgmentError
-          &&
-          <Form.Text
-            as="span"
-            id="user-acknowledgment-error"
-            className="plugin-error plugin-user-acknowledgment-error"
-          >
-            {t('Error: Before installing a plugin, you must agree to the terms by selecting the checkbox.')}
-          </Form.Text>
-        }
-        <Button
-          disabled={installLoading}
-          onClick={handleAddPluginClick}
-          aria-describedby="plugin-installation-duration-notice"
-        >
-          {
-            installLoading ? (
-              <div className="adding-button">
-                <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
-                  <span className="visually-hidden">{t('Adding plugin')}</span>
-                </Spinner>
-                {t(statusMessage)}
-              </div>
-            ) : t('Add')
-          }
-        </Button>
-        <Form.Text
-          as="span"
-          muted
-          id="plugin-installation-duration-notice"
-          className="plugin-form-text"
-        >
-          {t('This may take several minutes.')}
-        </Form.Text>
-        <div aria-live="polite">
-          { installSuccess &&
-            <Form.Text
-              as="span"
-              className="plugin-success"
-            >
-              <MdCheckCircleOutline />
-              {t('Successfully installed plugin')}
-            </Form.Text>
-          }
-        </div>
+        {installForm}
       </Form>
-      <hr />
+    </>
+  );
+
+  let removePluginTab = (
+    <>
       <Form aria-labelledby="remove-plugin-form-title">
-        <h5 id="remove-plugin-form-title" className="mb-3">{t('Remove a plugin')}</h5>
+        <h5 id="remove-plugin-form-title" className="mb-3">{t('Installed Plugins')}</h5>
         <Form.Label htmlFor="selectPluginToRemove">{t('Plugin name')}</Form.Label>
         <Form.Select
           id="selectPluginToRemove"
@@ -562,7 +575,11 @@ export default function PluginModal(props) {
           }
         </div>
       </Form>
-      <hr />
+    </>
+  );
+
+  let advancedSettingsTab = (
+    <>
       <Form aria-labelledby="configure-conda-form-title" aria-describedby="conda-executable-description">
         <Form.Group>
           <h5 id="configure-conda-form-title" className="mb-3">{t('Configure conda executable (Advanced)')}</h5>
@@ -690,6 +707,51 @@ export default function PluginModal(props) {
         }
       </Form.Group>
       </Form>
+    </>
+  );
+
+  let modalBody = (
+    <Modal.Body>
+      <Tab.Container id="plugin-modal-tabs" defaultActiveKey="registry">
+        <Row>
+          <Col sm={2} className="plugin-modal-nav">
+            <Nav variant="pills" className="flex-column">
+              <Nav.Item className="plugin-modal-nav-item">
+                <Nav.Link eventKey="registry">Plugin Registry</Nav.Link>
+              </Nav.Item>
+              <Nav.Item className="plugin-modal-nav-item">
+                <Nav.Link eventKey="installed">Installed Plugins</Nav.Link>
+              </Nav.Item>
+              <Nav.Item className="plugin-modal-nav-item">
+                <Nav.Link eventKey="manual">Manual Install</Nav.Link>
+              </Nav.Item>
+              <Nav.Item className="plugin-modal-nav-item">
+                <Nav.Link eventKey="advanced">Advanced Settings</Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </Col>
+          <Col sm={10}>
+            <Tab.Content>
+              <Tab.Pane eventKey="registry">
+                <PluginRegistryTab
+                  installedPlugins={plugins}
+                  installForm={installForm}
+                />
+              </Tab.Pane>
+              <Tab.Pane eventKey="installed">
+                {removePluginTab}
+              </Tab.Pane>
+              <Tab.Pane eventKey="manual">
+                {manualInstallTab}
+              </Tab.Pane>
+              <Tab.Pane eventKey="advanced">
+                {advancedSettingsTab}
+              </Tab.Pane>
+            </Tab.Content>
+          </Col>
+        </Row>
+      </Tab.Container>
+
     </Modal.Body>
   );
   if (installErr) {
@@ -747,9 +809,14 @@ export default function PluginModal(props) {
   }
 
   return (
-    <Modal show={show} onHide={handleModalClose} contentClassName="plugin-modal">
+    <Modal
+      size="xl"
+      show={show}
+      onHide={handleModalClose}
+      contentClassName="plugin-modal"
+    >
       <Modal.Header>
-        <Modal.Title>{t('Manage plugins')}</Modal.Title>
+        <Modal.Title>{t('Plugin Manager')}</Modal.Title>
         <Button
           variant="secondary-outline"
           onClick={handleModalClose}
@@ -773,3 +840,4 @@ PluginModal.propTypes = {
     modelID: PropTypes.string,
   }).isRequired,
 };
+
