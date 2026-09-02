@@ -23,13 +23,14 @@ export default function PluginRegistryDetailPane(props) {
     plugin,
     installedPluginNames,
     installedPluginNamesVersions,
-    updateInvestList,
+    addRegistryPlugin,
+    installLoading, // true if parent installLoading val == pluginID
+    installErr, // true if parent installErr val == pluginID
+    installErrMsg,
+    installSuccess, // true if parent installSuccess val == pluginID
+    installDisabled,
   } = props;
-  const [installErr, setInstallErr] = useState('');
-  const [installLoading, setInstallLoading] = useState(false);
-  const [installSuccess, setInstallSuccess] = useState(false);
-  const [installDisabled, setInstallDisabled] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('Installing...');
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
   const [needsMSVC, setNeedsMSVC] = useState(false);
@@ -75,7 +76,7 @@ export default function PluginRegistryDetailPane(props) {
   const handleAddPluginClick = () => {
     clearFormErrors();
     if (validateAddPluginForm()) {
-      addPlugin();
+      addRegistryPlugin(pluginID, plugin.github_repo, plugin.version);
     }
   };
 
@@ -86,25 +87,6 @@ export default function PluginRegistryDetailPane(props) {
       setUserAcknowledgmentError(true);
     }
     return formValid;
-  };
-
-  const addPlugin = () => {
-    setInstallSuccess(false);
-    setInstallLoading(true);
-    ipcRenderer.invoke(
-      ipcMainChannels.ADD_PLUGIN,
-      plugin.github_repo, // url
-      plugin.version, // revision
-      undefined, // local path; not used for Registry-based install
-      'plugin_registry' // source type
-    ).then(() => {
-      setInstallLoading(false);
-      updateInvestList();
-      setInstallSuccess(true);
-    }).catch((err) => {
-      setInstallErr(err.toString());
-      setInstallLoading(false);
-    });
   };
 
   const downloadMSVC = () => {
@@ -134,23 +116,6 @@ export default function PluginRegistryDetailPane(props) {
     return people
   }
   
-  // function isInstalled(plugin) {
-  //   let installedPackage = false;
-  //   let installedVersion = false;
-
-  //   let packageName = plugin.pyproject_toml.tool.natcap.invest.package_name;
-  //   let version = plugin.version;
-    
-  //   if (installedPluginNamesVersions.includes(packageName + '@' + version)) {
-  //     installedPackage = true;
-  //     installedVersion = true;
-  //   } else if (installedPluginNames.includes(packageName)) {
-  //     installedPackage = true;
-  //   }
-  //   return [installedVersion, installedPackage]
-  // }
-  
-  // const [installedVersion, installedPackage] = isInstalled(plugin);
   const authors = extractAuthorsMaintainers(plugin, "authors");
   const maintainers = extractAuthorsMaintainers(plugin, "maintainers");
   const pluginType = pluginTypes[plugin.plugin_type];
@@ -160,7 +125,7 @@ export default function PluginRegistryDetailPane(props) {
 
   let installPane = (
     <>
-      {(isInstalledPackage && !isInstalledVersion) &&
+      {isInstalledPackage &&
         <div className="pt-3 plugin-version-note">
           <IconContext.Provider value={{ className: 'react-icons' }}>
             <BsExclamationCircle />
@@ -192,9 +157,7 @@ export default function PluginRegistryDetailPane(props) {
               aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
             />
           </Form.Group>
-          {
-            userAcknowledgmentError
-            &&
+          {userAcknowledgmentError &&
             <Form.Text
               as="p"
               id={`${pluginID}-user-acknowledgment-error`}
@@ -204,19 +167,20 @@ export default function PluginRegistryDetailPane(props) {
             </Form.Text>
           }
           <Button
-            disabled={installLoading}
+            disabled={installLoading || installDisabled}
             onClick={handleAddPluginClick}
             aria-describedby="plugin-installation-duration-notice"
           >
-            {
-              installLoading ? (
+            {installLoading
+              ? (
                 <div className="adding-button">
                   <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
                     <span className="visually-hidden">{t('Adding plugin')}</span>
                   </Spinner>
                   {t(statusMessage)}
                 </div>
-              ) : t('Add')
+              )
+              : t('Add')
             }
           </Button>
           <Form.Text
@@ -228,7 +192,7 @@ export default function PluginRegistryDetailPane(props) {
             {t('This may take several minutes.')}
           </Form.Text>
           <div aria-live="polite">
-            { installSuccess &&
+            {installSuccess &&
               <Form.Text
                 as="span"
                 className="plugin-success"
@@ -242,19 +206,6 @@ export default function PluginRegistryDetailPane(props) {
       </Form>
     </>
   );
-
-  if (isInstalledVersion) {
-    installPane = (
-      <>
-        <div className="pt-3 pb-3 plugin-version-note">
-          <IconContext.Provider value={{ className: 'react-icons' }}>
-            <BsCheckCircle />
-          </IconContext.Provider>
-          <span>This plugin is already installed!</span>
-        </div>
-      </>
-    );
-  };
   
   if (needsMSVC) {
     installPane = (
@@ -281,7 +232,7 @@ export default function PluginRegistryDetailPane(props) {
     installPane = (
       <>
         <h5>{t('Error installing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{installErr}</div>
+        <div className="plugin-error plugin-install-remove-error">{installErrMsg}</div>
         <Button
           onClick={() => ipcRenderer.send(
             ipcMainChannels.SHOW_ITEM_IN_FOLDER,
@@ -293,6 +244,17 @@ export default function PluginRegistryDetailPane(props) {
       </>
     );
   };
+
+  let alreadyInstalledPane = (
+    <>
+      <div className="pt-3 pb-3 plugin-version-note">
+        <IconContext.Provider value={{ className: 'react-icons' }}>
+          <BsCheckCircle />
+        </IconContext.Provider>
+        <span>This plugin is installed!</span>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -373,7 +335,10 @@ export default function PluginRegistryDetailPane(props) {
         </Table>
       </div>
       <div className="install-pane registry-install-form">
-        {installPane}
+        {isInstalledVersion
+          ? alreadyInstalledPane
+          : installPane
+        }
       </div>
     </>
   );

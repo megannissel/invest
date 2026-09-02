@@ -42,20 +42,34 @@ export default function PluginModal(props) {
   const [path, setPath] = useState('');
   const [condaPath, setCondaPath] = useState('');
   const [pluginEnvs, setPluginEnvs] = useState({});
-  const [installErr, setInstallErr] = useState('');
-  const [uninstallErr, setUninstallErr] = useState('');
-  const [pluginToRemove, setPluginToRemove] = useState('');
-  const [installLoading, setInstallLoading] = useState(false);
-  const [uninstallLoading, setUninstallLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [needsMSVC, setNeedsMSVC] = useState(false);
-  const [plugins, setPlugins] = useState({});
+
   const [installFrom, setInstallFrom] = useState('url');
+  const [installLoading, setInstallLoading] = useState('');
+  const [installErr, setInstallErr] = useState('');
+  const [installErrMsg, setInstallErrMsg] = useState('');
+  const [installSuccess, setInstallSuccess] = useState('');
+
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
   const [pluginSourceMissingError, setPluginSourceMissingError] = useState(false);
-  const [installSuccess, setInstallSuccess] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [needsMSVC, setNeedsMSVC] = useState(false);
+
+  const [pluginToRemove, setPluginToRemove] = useState('');
+  const [uninstallLoading, setUninstallLoading] = useState(false);
+  const [uninstallErr, setUninstallErr] = useState('');
   const [removalSuccess, setRemovalSuccess] = useState(false);
+
+  const [plugins, setPlugins] = useState({});
+  const [registryData, setRegistryData] = useState([]);
+  const [pluginSortOrder, setPluginSortOrder] = useState([]);
+  const [activePluginKey, setActivePluginKey] = useState('');
+  const [fetchError, setFetchError] = useState(false);
+
+  const registryMetadataURL = "https://natcap.github.io/invest-plugin-registry/metadata.json";
+  const dataCacheKey = "registryData";
+  const cacheTimeout = 1000 * 60 * 60 * 24; // 24 hours
+  const manualInstallID = 'manualInstall';
 
   const handleModalClose = () => {
     setURL('');
@@ -72,6 +86,78 @@ export default function PluginModal(props) {
     setUserAcknowledgmentError(false);
     setPluginSourceMissingError(false);
   };
+
+  async function fetchRegistryData() {
+    //localStorage.removeItem(dataCacheKey); // Uncomment to clear localStorage
+    let cacheJSON = null;
+    let cacheStale = true;
+
+    // Check if data is cached in Local Storage
+    const cachedData = localStorage.getItem(dataCacheKey);
+
+    if (cachedData) {
+      cacheJSON = JSON.parse(cachedData);
+      if (Date.now() - cacheJSON.cacheDate < cacheTimeout) {
+        cacheStale = false;
+      }
+    }
+
+    if (cacheJSON && !cacheStale) {
+        console.log('Using cached data');
+        setRegistryData(cacheJSON.data);
+        //setFetchError(true); // Uncomment to test error state
+    } else {
+      console.log('Cache miss; fetching data...');
+      try {
+        // Fetch data from the Registry if not cached
+        const response = await fetch(registryMetadataURL);
+        if (!response.ok) {
+          throw new Error(`Response status: ${response.status}`);
+        }
+        const pluginJSON = await response.json();
+        const cacheData = Object({
+          'data': pluginJSON.data,
+          'cacheDate': Date.now()
+        });
+
+        // Cache the data in localStorage
+        localStorage.setItem(dataCacheKey, JSON.stringify(cacheData));
+
+        setRegistryData(pluginJSON.data);
+        setFetchError(false);
+      } catch (error) {
+        console.log(error.message);
+        setFetchError(true);
+      }
+    }
+  }
+
+  useEffect(() => {
+    fetchRegistryData();
+  }, []);
+
+  function sortByName(a, b) {
+    if (a[1] > b[1]) {
+      return 1;
+    }
+    return -1;
+  }
+
+  useEffect(() => {
+    if (Object.keys(registryData).length) {
+      const toSort = [];
+      for (const pluginID in registryData) {
+        toSort.push([pluginID, registryData[pluginID].plugin_name])
+      };
+      const sorted = toSort.sort(sortByName);
+      setPluginSortOrder(sorted);
+      setActivePluginKey(sorted[0][0]);
+    }
+  }, [registryData]);
+
+  function handlePluginClick(pluginKey) {
+    setActivePluginKey(pluginKey);
+  }
 
   useEffect(() => {
     Promise.all([
@@ -130,9 +216,9 @@ export default function PluginModal(props) {
   };
 
   const addPlugin = () => {
-    setInstallSuccess(false);
+    setInstallSuccess('');
     setRemovalSuccess(false);
-    setInstallLoading(true);
+    setInstallLoading(manualInstallID);
     ipcRenderer.invoke(
       ipcMainChannels.ADD_PLUGIN,
       installFrom === 'url' ? url : undefined, // url
@@ -140,27 +226,48 @@ export default function PluginModal(props) {
       installFrom === 'path' ? path : undefined, // path
       installFrom === 'path' ? 'plugin_local' : 'plugin_git' // source type
     ).then(() => {
-      setInstallLoading(false);
+      setInstallLoading('');
       updateInvestList();
-      setInstallSuccess(true);
+      setInstallSuccess(manualInstallID);
       // clear the input fields
       setURL('');
       setRevision('');
       setPath('');
       fetchInstalledPlugins();
     }).catch((err) => {
-      setInstallErr(err.toString());
+      setInstallErrMsg(err.toString());
+      setInstallErr(manualInstallID);
+    });
+  };
+
+  const addRegistryPlugin = (pluginID, githubRepo, version) => {
+    setInstallSuccess('');
+    setInstallLoading(pluginID);
+    ipcRenderer.invoke(
+      ipcMainChannels.ADD_PLUGIN,
+      githubRepo, // url
+      version, // revision
+      undefined, // local path; not used for Registry-based install
+      'plugin_registry' // source type
+    ).then(() => {
+      setInstallLoading('');
+      updateInvestList();
+      setInstallSuccess(pluginID);
+    }).catch((err) => {
+      setInstallErrMsg(err.toString());
+      setInstallErr(pluginID);
+      setInstallLoading('');
     });
   };
 
   const handleResetForm = () => {
-    setInstallErr(false);
-    setInstallLoading(false);
+    setInstallErr('');
+    setInstallLoading('');
   }
 
   const removePlugin = () => {
     setRemovalSuccess(false);
-    setInstallSuccess(false);
+    setInstallSuccess('');
     setUninstallLoading(true);
     openJobs.forEach((job, tabID) => {
       if (job.modelID === pluginToRemove) {
@@ -173,7 +280,6 @@ export default function PluginModal(props) {
       setRemovalSuccess(true);
       updateInvestList();
       setUninstallLoading(false);
-      fetchInstalledPlugins();
     }).catch((err) => {
       setUninstallErr(err.toString());
     });
@@ -306,23 +412,18 @@ export default function PluginModal(props) {
     return () => { ipcRenderer.removeAllListeners('plugin-install-status'); };
   }, [show]);
 
-  function fetchInstalledPlugins() {
+  useEffect(() => {
     ipcRenderer.invoke(ipcMainChannels.GET_SETTING, 'plugins').then(
       (data) => {
         if (data) {
           setPlugins(data);
+          setPluginToRemove(Object.keys(data)[0]);
         }
       }
     );
-  }
-
-  useEffect(() => {
-    fetchInstalledPlugins();
-    setPluginToRemove(Object.keys(plugins)[0]);
-  }, []);
+  }, [installLoading, uninstallLoading]);
 
   const { t } = useTranslation();
-
 
   let pluginFields;
   if (installFrom === 'url') {
@@ -498,7 +599,7 @@ export default function PluginModal(props) {
           aria-describedby="plugin-installation-duration-notice"
         >
           {
-            installLoading ? (
+            (installLoading == manualInstallID) ? (
               <div className="adding-button">
                 <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
                   <span className="visually-hidden">{t('Adding plugin')}</span>
@@ -517,7 +618,7 @@ export default function PluginModal(props) {
           {t('This may take several minutes.')}
         </Form.Text>
         <div aria-live="polite">
-          { installSuccess &&
+          { (installSuccess == manualInstallID) &&
             <Form.Text
               as="span"
               className="plugin-success"
@@ -530,11 +631,11 @@ export default function PluginModal(props) {
       </Form>
     </>
   );
-  if (installErr) {
+  if (installErr == manualInstallID) {
     manualInstallTab = (
       <>
         <h5>{t('Error installing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{installErr}</div>
+        <div className="plugin-error plugin-install-remove-error">{installErrMsg}</div>
         <Button
           className="me-2"
           onClick={handleResetForm}
@@ -776,6 +877,37 @@ export default function PluginModal(props) {
     </>
   );
 
+  let pluginRegistryTab = (
+    <>
+      {fetchError ? (
+        <div className="registry-fetch-error">
+          <IconContext.Provider value={{ className: 'registry-warning-icon' }}>
+            <MdOutlineWarningAmber />
+          </IconContext.Provider>
+          <p>
+            {t(`An error occurred when loading the Plugin Registry data.
+              Please check your internet connection, then try again.
+              If the problem persists, consider reporting it on the NatCap Community Forum.`)}
+          </p>
+        </div>
+      ) : (
+        <PluginRegistryTab
+          registryData={registryData}
+          pluginSortOrder={pluginSortOrder}
+          activePluginKey={activePluginKey}
+          handlePluginClick={handlePluginClick}
+          fetchError={fetchError}
+          installedPlugins={plugins}
+          addRegistryPlugin={addRegistryPlugin}
+          installLoading={installLoading}
+          installErr={installErr}
+          installErrMsg={installErrMsg}
+          installSuccess={installSuccess}
+        />
+      )}
+    </>
+  );
+
   let modalBody = (
     <Modal.Body>
       <Tab.Container id="plugin-modal-tabs" defaultActiveKey="registry">
@@ -799,10 +931,7 @@ export default function PluginModal(props) {
           <Col sm={10}>
             <Tab.Content>
               <Tab.Pane eventKey="registry">
-                <PluginRegistryTab
-                  installedPlugins={plugins}
-                  updateInvestList={updateInvestList}
-                />
+                {pluginRegistryTab}
               </Tab.Pane>
               <Tab.Pane eventKey="installed">
                 {removePluginTab}
