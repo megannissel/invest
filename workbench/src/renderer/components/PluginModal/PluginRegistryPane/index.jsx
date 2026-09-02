@@ -5,19 +5,14 @@ import { useTranslation } from 'react-i18next';
 
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
-import { IconContext } from "react-icons";
-import { MdOutlineWarningAmber } from "react-icons/md";
 
-import { getPluginRegistryData } from '../../../server_requests';
 import PluginRegistryDetailPane from './PluginRegistryDetailPane';
-
-const { ipcRenderer } = window.Workbench.electron;
 
 export default function PluginRegistryTab(props) {
   const {
     registryData,
-    pluginSortOrder,
     activePluginKey,
+    activePluginIndex,
     handlePluginClick,
     fetchError,
     installedPlugins,
@@ -48,7 +43,8 @@ export default function PluginRegistryTab(props) {
   }, [installedPlugins]);
 
   const pluginList = [];
-  for (const [pluginID, pluginName] of pluginSortOrder) {
+  for (const pluginInfo of registryData) {
+    let pluginID = pluginInfo.invest_package_name;
     const listItem = (
       <button
         key={pluginID}
@@ -56,11 +52,21 @@ export default function PluginRegistryTab(props) {
         className={`registry-list-group-item plugin-registry-button ${activePluginKey === pluginID ? 'active' : ''}`}
         onClick={(e) => handlePluginClick(pluginID)}
       >
-        {pluginName}
+        {pluginInfo.plugin_name}
       </button>
     )
     pluginList.push(listItem);
-  };
+  }
+
+  function getInstallStatus(plugin) {
+    if (installedPluginNamesVersions.includes(plugin.invest_package_name + '@' + plugin.version)) {
+      return "thisVersionInstalled";
+    } else if (installedPluginNames.includes(plugin.invest_package_name)) {
+      return "anotherVersionInstalled";
+    } else {
+      return "notInstalled"
+    }
+  }
 
   return (
     <Row>
@@ -72,7 +78,7 @@ export default function PluginRegistryTab(props) {
             </div>
           )
           : (
-            <p>No plugins found</p>
+            <p>{t('No plugins found')}</p>
           )
         }
       </Col>
@@ -81,9 +87,8 @@ export default function PluginRegistryTab(props) {
           <PluginRegistryDetailPane
             key={activePluginKey}
             pluginID={activePluginKey}
-            plugin={registryData[activePluginKey]}
-            installedPluginNames={installedPluginNames}
-            installedPluginNamesVersions={installedPluginNamesVersions}
+            plugin={registryData[activePluginIndex]}
+            installStatus={getInstallStatus(registryData[activePluginIndex])}
             addRegistryPlugin={addRegistryPlugin}
             installLoading={installLoading == activePluginKey}
             installErr={installErr == activePluginKey}

@@ -21,21 +21,20 @@ export default function PluginRegistryDetailPane(props) {
   const {
     pluginID,
     plugin,
-    installedPluginNames,
-    installedPluginNamesVersions,
+    installStatus,
     addRegistryPlugin,
-    installLoading, // true if parent installLoading val == pluginID
-    installErr, // true if parent installErr val == pluginID
+    installLoading,     // true if parent installLoading val == pluginID
+    installErr,         // true if parent installErr val == pluginID
     installErrMsg,
-    installSuccess, // true if parent installSuccess val == pluginID
-    installDisabled,
+    installSuccess,     // true if parent installSuccess val == pluginID
+    installDisabled,    // true if parent installLoading val && val != pluginID
   } = props;
   const [statusMessage, setStatusMessage] = useState('Installing...');
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
   const [needsMSVC, setNeedsMSVC] = useState(false);
-  const [isInstalledPackage, setIsInstalledPackage] = useState(false);
-  const [isInstalledVersion, setIsInstalledVersion] = useState(false);
+  // const [isInstalledPackage, setIsInstalledPackage] = useState(false);
+  // const [isInstalledVersion, setIsInstalledVersion] = useState(false);
   
   const registryBaseURL = "https://natcap.github.io/invest-plugin-registry/plugins/"
   const pluginTypes = {
@@ -61,22 +60,21 @@ export default function PluginRegistryDetailPane(props) {
     }
   }, [userAcknowledgment]);
 
-  useEffect(() => {
-    let packageName = plugin.pyproject_toml.tool.natcap.invest.package_name;
-    let version = plugin.version;
+  // useEffect(() => {
+  //   let version = plugin.version;
     
-    if (installedPluginNamesVersions.includes(packageName + '@' + version)) {
-      setIsInstalledPackage(true);
-      setIsInstalledVersion(true);
-    } else if (installedPluginNames.includes(packageName)) {
-      setIsInstalledPackage(true);
-    }
-  }, [installedPluginNames, installedPluginNamesVersions]);
+  //   if (installedPluginNamesVersions.includes(pluginID + '@' + version)) {
+  //     setIsInstalledPackage(true);
+  //     setIsInstalledVersion(true);
+  //   } else if (installedPluginNames.includes(pluginID)) {
+  //     setIsInstalledPackage(true);
+  //   }
+  // }, [installedPluginNames, installedPluginNamesVersions]);
 
   const handleAddPluginClick = () => {
     clearFormErrors();
     if (validateAddPluginForm()) {
-      addRegistryPlugin(pluginID, plugin.github_repo, plugin.version);
+      addRegistryPlugin(pluginID, plugin.repository_url, plugin.version);
     }
   };
 
@@ -106,18 +104,6 @@ export default function PluginRegistryDetailPane(props) {
     return () => { ipcRenderer.removeAllListeners('plugin-install-status'); };
   }, []);
 
-  function extractAuthorsMaintainers(plugin, k) {
-    let people = null;
-
-    if (plugin.pyproject_toml.project.hasOwnProperty(k)) {
-      let devList = plugin.pyproject_toml.project[k];
-      people = devList.map((x) => x.name ? x.name : x.email).join("; ");
-    }
-    return people
-  }
-  
-  const authors = extractAuthorsMaintainers(plugin, "authors");
-  const maintainers = extractAuthorsMaintainers(plugin, "maintainers");
   const pluginType = pluginTypes[plugin.plugin_type];
   const keywords = [pluginType].concat(plugin.keywords).join(", ");
 
@@ -125,7 +111,7 @@ export default function PluginRegistryDetailPane(props) {
 
   let installPane = (
     <>
-      {isInstalledPackage &&
+      {(installStatus == "anotherVersionInstalled") &&
         <div className="pt-3 plugin-version-note">
           <IconContext.Provider value={{ className: 'react-icons' }}>
             <BsExclamationCircle />
@@ -261,29 +247,29 @@ export default function PluginRegistryDetailPane(props) {
       <div className="plugin-pane">
         <h5>{plugin.plugin_name}</h5>
         <p className="plugin-description">
-          {plugin.pyproject_toml.project.description}
+          {plugin.description}
         </p>
         <Table borderless size="sm" className="plugin-description plugin-table">
           <tbody>
             <tr>
               <td className="text-end"><b>Downloads:</b></td>
               <td>
-                30
+                {plugin.download_count}
               </td>
             </tr>
-            {authors &&
+            {(plugin.authors.length > 0) &&
             <tr>
               <td className="text-end"><b>Authors:</b></td>
               <td>
-                {authors}
+                {plugin.authors.join("; ")}
               </td>
             </tr>
             }
-            {maintainers &&
+            {(plugin.maintainers.length > 0) &&
             <tr>
               <td className="text-end"><b>Maintainers:</b></td>
               <td>
-                {maintainers}
+                {plugin.maintainers.join("; ")}
               </td>
             </tr>
             }
@@ -296,30 +282,30 @@ export default function PluginRegistryDetailPane(props) {
             <tr>
               <td className="text-end"><b>License:</b></td>
               <td>
-                {plugin.pyproject_toml.project.license}
+                {plugin.license}
               </td>
             </tr>
             <tr>
               <td className="text-end"><b>More Info:</b></td>
               <td>
                 <a
-                  href={`${registryBaseURL}${pluginID}.html`}
-                  title={`${registryBaseURL}${pluginID}.html`}
+                  href={plugin.registry_url}
+                  title={plugin.registry_url}
                   aria-label={t("View on Plugin Registry (opens in web browser)")}
                   onClick={openLinkInBrowser}
                 >View on Registry</a> | <a
-                  href={plugin.pyproject_toml.project.urls.Repository}
-                  title={plugin.pyproject_toml.project.urls.Repository}
+                  href={plugin.repository_url}
+                  title={plugin.repository_url}
                   aria-label={t("Plugin source code (opens in web browser)")}
                   onClick={openLinkInBrowser}
                 >Source Code</a> | <a
-                  href={plugin.pyproject_toml.project.urls.Documentation}
-                  title={plugin.pyproject_toml.project.urls.Documentation}
+                  href={plugin.documentation_url}
+                  title={plugin.documentation_url}
                   aria-label={t("Plugin documentation (opens in web browser)")}
                   onClick={openLinkInBrowser}
                 >Documentation</a> | <a
-                  href={plugin.pyproject_toml.project.urls.Issues}
-                  title={plugin.pyproject_toml.project.urls.Issues}
+                  href={plugin.issues_url}
+                  title={plugin.issues_url}
                   aria-label={t("Plugin issue tracker (opens in web browser)")}
                   onClick={openLinkInBrowser}
                 >Issue Tracker</a>
@@ -335,7 +321,7 @@ export default function PluginRegistryDetailPane(props) {
         </Table>
       </div>
       <div className="install-pane registry-install-form">
-        {isInstalledVersion
+        {(installStatus == "thisVersionInstalled")
           ? alreadyInstalledPane
           : installPane
         }

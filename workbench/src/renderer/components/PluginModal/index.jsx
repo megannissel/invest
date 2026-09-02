@@ -15,15 +15,18 @@ import TabPane from 'react-bootstrap/TabPane';
 import TabContent from 'react-bootstrap/TabContent';
 import TabContainer from 'react-bootstrap/TabContainer';
 import { useTranslation } from 'react-i18next';
+import { IconContext } from "react-icons";
 import {
   MdCheckCircleOutline,
   MdClose,
-  MdFolderOpen
+  MdFolderOpen,
+  MdOutlineWarningAmber
 } from 'react-icons/md';
 
 import { openLinkInBrowser } from '../../utils';
 import { ipcMainChannels } from '../../../main/ipcMainChannels';
 
+import { mockRegistryData } from './mockRegistryData';
 import PluginRegistryTab from './PluginRegistryPane';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
@@ -62,8 +65,8 @@ export default function PluginModal(props) {
 
   const [plugins, setPlugins] = useState({});
   const [registryData, setRegistryData] = useState([]);
-  const [pluginSortOrder, setPluginSortOrder] = useState([]);
   const [activePluginKey, setActivePluginKey] = useState('');
+  const [activePluginIndex, setActivePluginIndex] = useState(0);
   const [fetchError, setFetchError] = useState(false);
 
   const registryMetadataURL = "https://natcap.github.io/invest-plugin-registry/metadata.json";
@@ -87,12 +90,19 @@ export default function PluginModal(props) {
     setPluginSourceMissingError(false);
   };
 
+  function sortByName(a, b) {
+    if (a.plugin_name > b.plugin_name) {
+      return 1;
+    }
+    return -1;
+  }
+
   async function fetchRegistryData() {
     //localStorage.removeItem(dataCacheKey); // Uncomment to clear localStorage
     let cacheJSON = null;
     let cacheStale = true;
 
-    // Check if data is cached in Local Storage
+    // Check if data is cached in localStorage
     const cachedData = localStorage.getItem(dataCacheKey);
 
     if (cachedData) {
@@ -105,25 +115,33 @@ export default function PluginModal(props) {
     if (cacheJSON && !cacheStale) {
         console.log('Using cached data');
         setRegistryData(cacheJSON.data);
+        setFetchError(false);
         //setFetchError(true); // Uncomment to test error state
     } else {
       console.log('Cache miss; fetching data...');
       try {
         // Fetch data from the Registry if not cached
-        const response = await fetch(registryMetadataURL);
-        if (!response.ok) {
-          throw new Error(`Response status: ${response.status}`);
-        }
-        const pluginJSON = await response.json();
+        // const response = await fetch(registryMetadataURL);
+        // if (!response.ok) {
+        //   throw new Error(`Response status: ${response.status}`);
+        // }
+        // const pluginJSON = await response.json();
+        // const sortedPlugins = pluginJSON.data.sort(sortByName);
+
+        // MOCKING FOR NEW DATA STRUCTURE:
+        let pluginJSON = mockRegistryData;
+        let sortedPlugins = pluginJSON.sort(sortByName);
+        // END MOCKING FOR NEW DATA STRUCTURE
+
         const cacheData = Object({
-          'data': pluginJSON.data,
+          'data': sortedPlugins,
           'cacheDate': Date.now()
         });
 
         // Cache the data in localStorage
         localStorage.setItem(dataCacheKey, JSON.stringify(cacheData));
 
-        setRegistryData(pluginJSON.data);
+        setRegistryData(sortedPlugins);
         setFetchError(false);
       } catch (error) {
         console.log(error.message);
@@ -132,31 +150,25 @@ export default function PluginModal(props) {
     }
   }
 
+  const handleRetryFetchRegistryData = () => {
+    setFetchError(false);
+    fetchRegistryData();
+  }
+
   useEffect(() => {
     fetchRegistryData();
   }, []);
 
-  function sortByName(a, b) {
-    if (a[1] > b[1]) {
-      return 1;
-    }
-    return -1;
-  }
-
   useEffect(() => {
     if (Object.keys(registryData).length) {
-      const toSort = [];
-      for (const pluginID in registryData) {
-        toSort.push([pluginID, registryData[pluginID].plugin_name])
-      };
-      const sorted = toSort.sort(sortByName);
-      setPluginSortOrder(sorted);
-      setActivePluginKey(sorted[0][0]);
+      setActivePluginKey(registryData[0]['invest_package_name']);
+      setActivePluginIndex(0);
     }
   }, [registryData]);
 
   function handlePluginClick(pluginKey) {
     setActivePluginKey(pluginKey);
+    setActivePluginIndex(registryData.findIndex(i => i.invest_package_name === pluginKey));
   }
 
   useEffect(() => {
@@ -889,12 +901,18 @@ export default function PluginModal(props) {
               Please check your internet connection, then try again.
               If the problem persists, consider reporting it on the NatCap Community Forum.`)}
           </p>
+          <Button
+            className="me-2"
+            onClick={handleRetryFetchRegistryData}
+          >
+            {t('Retry')}
+          </Button>
         </div>
       ) : (
         <PluginRegistryTab
           registryData={registryData}
-          pluginSortOrder={pluginSortOrder}
           activePluginKey={activePluginKey}
+          activePluginIndex={activePluginIndex}
           handlePluginClick={handlePluginClick}
           fetchError={fetchError}
           installedPlugins={plugins}
