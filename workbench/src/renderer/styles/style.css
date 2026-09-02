@@ -1034,3 +1034,31 @@ code {
     }
   }
 }
+
+.react-icons {
+  vertical-align: middle;
+  color: var(--palo-verde-dark);
+  height: 1.25em;
+  width: 1.25em;
+  margin-right: 0.5em;
+}
+
+.plugin-version-note {
+  display: flex;
+  align-items: center;
+}
+
+.registry-fetch-error {
+  display: flex;
+  padding: 3rem;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.registry-warning-icon {
+  height: 3em;
+  width: 3em;
+  margin-bottom: 1rem;
+  color: var(--digital-red);
+}

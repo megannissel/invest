@@ -137,7 +137,8 @@ export default function PluginModal(props) {
       ipcMainChannels.ADD_PLUGIN,
       installFrom === 'url' ? url : undefined, // url
       installFrom === 'url' ? revision : undefined, // revision
-      installFrom === 'path' ? path : undefined // path
+      installFrom === 'path' ? path : undefined, // path
+      installFrom === 'path' ? 'plugin_local' : 'plugin_git' // source type
     ).then(() => {
       setInstallLoading(false);
       updateInvestList();
@@ -146,10 +147,16 @@ export default function PluginModal(props) {
       setURL('');
       setRevision('');
       setPath('');
+      fetchInstalledPlugins();
     }).catch((err) => {
       setInstallErr(err.toString());
     });
   };
+
+  const handleResetForm = () => {
+    setInstallErr(false);
+    setInstallLoading(false);
+  }
 
   const removePlugin = () => {
     setRemovalSuccess(false);
@@ -166,6 +173,7 @@ export default function PluginModal(props) {
       setRemovalSuccess(true);
       updateInvestList();
       setUninstallLoading(false);
+      fetchInstalledPlugins();
     }).catch((err) => {
       setUninstallErr(err.toString());
     });
@@ -298,16 +306,20 @@ export default function PluginModal(props) {
     return () => { ipcRenderer.removeAllListeners('plugin-install-status'); };
   }, [show]);
 
-  useEffect(() => {
+  function fetchInstalledPlugins() {
     ipcRenderer.invoke(ipcMainChannels.GET_SETTING, 'plugins').then(
       (data) => {
         if (data) {
           setPlugins(data);
-          setPluginToRemove(Object.keys(data)[0]);
         }
       }
     );
-  }, [installLoading, uninstallLoading]);
+  }
+
+  useEffect(() => {
+    fetchInstalledPlugins();
+    setPluginToRemove(Object.keys(plugins)[0]);
+  }, []);
 
   const { t } = useTranslation();
 
@@ -419,79 +431,6 @@ export default function PluginModal(props) {
   const pluginDocsURL = "https://invest.readthedocs.io/en/latest/plugins.html";
   const pluginRegistryURL = "https://natcap.github.io/invest-plugin-registry/";
 
-  let installForm = (
-    <>
-      <Form.Group>
-        <Form.Text
-          as="span"
-          id="plugin-installation-risk-statement"
-          className="plugin-form-text"
-        >
-          {t('As with any third-party software, installing a plugin for use with InVEST '
-            + 'may pose a risk to your data, computer, and/or network. Please make sure '
-            + 'you trust the authors of the plugin you are installing. If you are '
-            + 'installing from a git URL, you are encouraged to review the source code, '
-            + 'which can change over time.')}
-        </Form.Text>
-      </Form.Group>
-      <Form.Group>
-        <Form.Check
-          id="user-acknowledgment-checkbox"
-          label={t('I acknowledge and accept the risks associated with installing this plugin.')}
-          value={userAcknowledgment}
-          onChange={(event) => setUserAcknowledgment(event.target.checked)}
-          aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
-        />
-      </Form.Group>
-      {
-        userAcknowledgmentError
-        &&
-        <Form.Text
-          as="span"
-          id="user-acknowledgment-error"
-          className="plugin-error plugin-user-acknowledgment-error"
-        >
-          {t('Error: Before installing a plugin, you must agree to the terms by selecting the checkbox.')}
-        </Form.Text>
-      }
-      <Button
-        disabled={installLoading}
-        onClick={handleAddPluginClick}
-        aria-describedby="plugin-installation-duration-notice"
-      >
-        {
-          installLoading ? (
-            <div className="adding-button">
-              <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
-                <span className="visually-hidden">{t('Adding plugin')}</span>
-              </Spinner>
-              {t(statusMessage)}
-            </div>
-          ) : t('Add')
-        }
-      </Button>
-      <Form.Text
-        as="span"
-        muted
-        id="plugin-installation-duration-notice"
-        className="plugin-form-text"
-      >
-        {t('This may take several minutes.')}
-      </Form.Text>
-      <div aria-live="polite">
-        { installSuccess &&
-          <Form.Text
-            as="span"
-            className="plugin-success"
-          >
-            <MdCheckCircleOutline />
-            {t('Successfully installed plugin')}
-          </Form.Text>
-        }
-      </div>
-    </>
-  )
-
   let manualInstallTab = (
     <>
       <div>
@@ -520,10 +459,121 @@ export default function PluginModal(props) {
           </Form.Select>
         </Form.Group>
         {pluginFields}
-        {installForm}
+        <Form.Group>
+          <Form.Text
+            as="span"
+            id="plugin-installation-risk-statement"
+            className="plugin-form-text"
+          >
+            {t('As with any third-party software, installing a plugin for use with InVEST '
+              + 'may pose a risk to your data, computer, and/or network. Please make sure '
+              + 'you trust the authors of the plugin you are installing. If you are '
+              + 'installing from a git URL, you are encouraged to review the source code, '
+              + 'which can change over time.')}
+          </Form.Text>
+        </Form.Group>
+        <Form.Group>
+          <Form.Check
+            id="user-acknowledgment-checkbox"
+            label={t('I acknowledge and accept the risks associated with installing this plugin.')}
+            value={userAcknowledgment}
+            onChange={(event) => setUserAcknowledgment(event.target.checked)}
+            aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
+          />
+        </Form.Group>
+        {
+          userAcknowledgmentError
+          &&
+          <Form.Text
+            as="span"
+            id="user-acknowledgment-error"
+            className="plugin-error plugin-user-acknowledgment-error"
+          >
+            {t('Error: Before installing a plugin, you must agree to the terms by selecting the checkbox.')}
+          </Form.Text>
+        }
+        <Button
+          disabled={installLoading}
+          onClick={handleAddPluginClick}
+          aria-describedby="plugin-installation-duration-notice"
+        >
+          {
+            installLoading ? (
+              <div className="adding-button">
+                <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
+                  <span className="visually-hidden">{t('Adding plugin')}</span>
+                </Spinner>
+                {t(statusMessage)}
+              </div>
+            ) : t('Add')
+          }
+        </Button>
+        <Form.Text
+          as="span"
+          muted
+          id="plugin-installation-duration-notice"
+          className="plugin-form-text"
+        >
+          {t('This may take several minutes.')}
+        </Form.Text>
+        <div aria-live="polite">
+          { installSuccess &&
+            <Form.Text
+              as="span"
+              className="plugin-success"
+            >
+              <MdCheckCircleOutline />
+              {t('Successfully installed plugin')}
+            </Form.Text>
+          }
+        </div>
       </Form>
     </>
   );
+  if (installErr) {
+    manualInstallTab = (
+      <>
+        <h5>{t('Error installing plugin:')}</h5>
+        <div className="plugin-error plugin-install-remove-error">{installErr}</div>
+        <Button
+          className="me-2"
+          onClick={handleResetForm}
+        >
+          {t('Return to form')}
+        </Button>
+        <Button
+          onClick={() => ipcRenderer.send(
+            ipcMainChannels.SHOW_ITEM_IN_FOLDER,
+            window.Workbench.ELECTRON_LOG_PATH,
+          )}
+        >
+          {t('Find workbench logs')}
+        </Button>
+      </>
+    );
+  }
+  if (needsMSVC) {
+    manualInstallTab = (
+      <>
+        <h5>
+          {t('Microsoft Visual C++ Redistributable must be installed!')}
+        </h5>
+
+        {t('Plugin features require the ')}
+        <a href="https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist">
+          {t('Microsoft Visual C++ Redistributable')}
+        </a>
+        {t('. You must download and install the redistributable before continuing.')}
+
+        <Button
+          className="mt-3"
+          onClick={downloadMSVC}
+        >
+          {t('Continue to download and install')}
+        </Button>
+      </>
+    );
+  }
 
   let removePluginTab = (
     <>
@@ -577,6 +627,22 @@ export default function PluginModal(props) {
       </Form>
     </>
   );
+  if (uninstallErr) {
+    removePluginTab = (
+      <>
+        <h5>{t('Error removing plugin:')}</h5>
+        <div className="plugin-error plugin-install-remove-error">{uninstallErr}</div>
+        <Button
+          onClick={() => ipcRenderer.send(
+            ipcMainChannels.SHOW_ITEM_IN_FOLDER,
+            window.Workbench.ELECTRON_LOG_PATH,
+          )}
+        >
+          {t('Find workbench logs')}
+        </Button>
+      </>
+    );
+  }
 
   let advancedSettingsTab = (
     <>
@@ -735,7 +801,7 @@ export default function PluginModal(props) {
               <Tab.Pane eventKey="registry">
                 <PluginRegistryTab
                   installedPlugins={plugins}
-                  installForm={installForm}
+                  updateInvestList={updateInvestList}
                 />
               </Tab.Pane>
               <Tab.Pane eventKey="installed">
@@ -751,62 +817,8 @@ export default function PluginModal(props) {
           </Col>
         </Row>
       </Tab.Container>
-
     </Modal.Body>
   );
-  if (installErr) {
-    modalBody = (
-      <Modal.Body>
-        <h5>{t('Error installing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{installErr}</div>
-        <Button
-          onClick={() => ipcRenderer.send(
-            ipcMainChannels.SHOW_ITEM_IN_FOLDER,
-            window.Workbench.ELECTRON_LOG_PATH,
-          )}
-        >
-          {t('Find workbench logs')}
-        </Button>
-      </Modal.Body>
-    );
-  } else if (uninstallErr) {
-    modalBody = (
-      <Modal.Body>
-        <h5>{t('Error removing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{uninstallErr}</div>
-        <Button
-          onClick={() => ipcRenderer.send(
-            ipcMainChannels.SHOW_ITEM_IN_FOLDER,
-            window.Workbench.ELECTRON_LOG_PATH,
-          )}
-        >
-          {t('Find workbench logs')}
-        </Button>
-      </Modal.Body>
-    );
-  }
-  if (needsMSVC) {
-    modalBody = (
-      <Modal.Body>
-        <h5>
-          {t('Microsoft Visual C++ Redistributable must be installed!')}
-        </h5>
-
-        {t('Plugin features require the ')}
-        <a href="https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist">
-          {t('Microsoft Visual C++ Redistributable')}
-        </a>
-        {t('. You must download and install the redistributable before continuing.')}
-
-        <Button
-          className="mt-3"
-          onClick={downloadMSVC}
-        >
-          {t('Continue to download and install')}
-        </Button>
-      </Modal.Body>
-    );
-  }
 
   return (
     <Modal

@@ -3,200 +3,144 @@ import PropTypes from 'prop-types';
 
 import { useTranslation } from 'react-i18next';
 
-import Button from 'react-bootstrap/Button';
-import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
-import Table from 'react-bootstrap/Table';
-import { HiChevronDown } from "react-icons/hi";
-import { HiChevronUp } from "react-icons/hi";
-import { MdOutlineCheckCircle } from "react-icons/md";
+import { IconContext } from "react-icons";
+import { MdOutlineWarningAmber } from "react-icons/md";
 
-import { openLinkInBrowser } from '../../../utils';
 import { getPluginRegistryData } from '../../../server_requests';
+import PluginRegistryDetailPane from './PluginRegistryDetailPane';
 
-
-function PluginPane(props) {
-  const {
-    pluginID,
-    plugin,
-    installed,
-    installForm
-  } = props;
-  const registryBaseURL = "https://natcap.github.io/invest-plugin-registry/plugins/"
-  const pluginTypes = {
-    "preprocessing": "Preprocessing",
-    "postprocessing": "Postprocessing",
-    "workflow": "Workflow",
-    "invest_model_variant": "InVEST Model Variant",
-    "new_model": "New Model",
-    "other": "Other"
-  }
-
-  const { t } = useTranslation();
-
-  function extractAuthorsMaintainers(plugin, k) {
-    let people = null;
-
-    if (plugin.pyproject_toml.project.hasOwnProperty(k)) {
-      let devList = plugin.pyproject_toml.project[k];
-      people = devList.map((x) => x.name ? x.name : x.email).join("; ");
-    }
-    return people
-  }
-
-  const authors = extractAuthorsMaintainers(plugin, "authors");
-  const maintainers = extractAuthorsMaintainers(plugin, "maintainers");
-
-  const pluginType = pluginTypes[plugin.plugin_type];
-  const keywords = [pluginType].concat(plugin.keywords).join(", ");
-
-  return (
-    <>
-    <div className="plugin-pane">
-      <h5>{plugin.plugin_name}</h5>
-      <p className="plugin-description">
-        {plugin.pyproject_toml.project.description}
-      </p>
-      <Table borderless size="sm" className="plugin-description plugin-table">
-        <tbody>
-          <tr>
-            <td className="text-end"><b>Downloads:</b></td>
-            <td>
-              30
-            </td>
-          </tr>
-          {authors &&
-          <tr>
-            <td className="text-end"><b>Authors:</b></td>
-            <td>
-              {authors}
-            </td>
-          </tr>
-          }
-          {maintainers &&
-          <tr>
-            <td className="text-end"><b>Maintainers:</b></td>
-            <td>
-              {maintainers}
-            </td>
-          </tr>
-          }
-          <tr>
-            <td className="text-end"><b>Version:</b></td>
-            <td>
-              {plugin.version}
-            </td>
-          </tr>
-          <tr>
-            <td className="text-end"><b>License:</b></td>
-            <td>
-              {plugin.pyproject_toml.project.license}
-            </td>
-          </tr>
-          <tr>
-            <td className="text-end"><b>More Info:</b></td>
-            <td>
-              <a
-                href={`${registryBaseURL}${pluginID}.html`}
-                title={`${registryBaseURL}${pluginID}.html`}
-                aria-label={t("View on Plugin Registry (opens in web browser)")}
-                onClick={openLinkInBrowser}
-              >View on Registry</a> | <a
-                href={plugin.pyproject_toml.project.urls.Repository}
-                title={plugin.pyproject_toml.project.urls.Repository}
-                aria-label={t("Plugin source code (opens in web browser)")}
-                onClick={openLinkInBrowser}
-              >Source Code</a> | <a
-                href={plugin.pyproject_toml.project.urls.Documentation}
-                title={plugin.pyproject_toml.project.urls.Documentation}
-                aria-label={t("Plugin documentation (opens in web browser)")}
-                onClick={openLinkInBrowser}
-              >Documentation</a> | <a
-                href={plugin.pyproject_toml.project.urls.Issues}
-                title={plugin.pyproject_toml.project.urls.Issues}
-                aria-label={t("Plugin issue tracker (opens in web browser)")}
-                onClick={openLinkInBrowser}
-              >Issue Tracker</a>
-            </td>
-          </tr>
-          <tr>
-            <td className="text-end"><b>Tags:</b></td>
-              {keywords}
-            <td>
-            </td>
-          </tr>
-        </tbody>
-      </Table>
-    </div>
-    <div className="install-pane registry-install-form">
-      <Form aria-labelledby="add-plugin-form-title">
-        <Form.Group>
-          <Form.Control
-            className="hidden-input"
-            id="url"
-            readOnly
-            defaultValue={plugin.github_repo}
-          />
-          <Form.Control
-            className="hidden-input"
-            id="branch"
-            readOnly
-            defaultValue={plugin.version}
-          />
-          {installForm}
-        </Form.Group>
-      </Form>
-    </div>
-    </>
-  );
-}
-
+const { ipcRenderer } = window.Workbench.electron;
 
 export default function PluginRegistryTab(props) {
   const {
     installedPlugins,
-    installForm
+    updateInvestList,
   } = props;
   const [registryData, setRegistryData] = useState([]);
+  const [pluginSortOrder, setPluginSortOrder] = useState([]);
   const [activePluginKey, setActivePluginKey] = useState('');
+  const [fetchError, setFetchError] = useState(false);
+  const [installedPluginNames, setInstalledPluginNames] = useState([]);
+  const [installedPluginNamesVersions, setInstalledPluginNamesVersions] = useState([]);
+  const [plugins, setPlugins] = useState({});
+
+  const registryMetadataURL = "https://natcap.github.io/invest-plugin-registry/metadata.json";
+  const dataCacheKey = "registryData";
+  const cacheTimeout = 1000 * 60 * 60 * 24; // 24 hours
 
   const { t } = useTranslation();
 
-  async function loadPluginRegistryData() {
-    const registryData = await getPluginRegistryData();
-    setRegistryData(registryData);
-    console.log(registryData);
+  async function fetchRegistryData() {
+    //localStorage.removeItem(dataCacheKey); // Uncomment to clear localStorage
+    let cacheJSON = null;
+    let cacheStale = true;
+
+    // Check if data is cached in Local Storage
+    const cachedData = localStorage.getItem(dataCacheKey);
+
+    if (cachedData) {
+      cacheJSON = JSON.parse(cachedData);
+      if (Date.now() - cacheJSON.cacheDate < cacheTimeout) {
+        cacheStale = false;
+      }
+    }
+
+    if (cacheJSON && !cacheStale) {
+        console.log('Using cached data');
+        setRegistryData(cacheJSON.data);
+        //setFetchError(true); // Uncomment to test error state
+    } else {
+      console.log('Cache miss; fetching data...');
+      try {
+        // Fetch data from the Registry if not cached
+        const response = await fetch(registryMetadataURL);
+        if (!response.ok) {
+          throw new Error(`Response status: ${response.status}`);
+        }
+        const pluginJSON = await response.json();
+        const cacheData = Object({
+          'data': pluginJSON.data,
+          'cacheDate': Date.now()
+        });
+
+        // Cache the data in localStorage
+        localStorage.setItem(dataCacheKey, JSON.stringify(cacheData));
+
+        setRegistryData(pluginJSON.data);
+        setFetchError(false);
+      } catch (error) {
+        console.log(error.message);
+        setFetchError(true);
+      }
+    }
   }
 
   useEffect(() => {
-    loadPluginRegistryData();
+    fetchRegistryData();
   }, []);
+
+  function sortByName(a, b) {
+    if (a[1] > b[1]) {
+      return 1;
+    }
+    return -1;
+  }
 
   useEffect(() => {
     if (Object.keys(registryData).length) {
-      setActivePluginKey(Object.keys(registryData)[0]);
+      const toSort = [];
+      for (const pluginID in registryData) {
+        toSort.push([pluginID, registryData[pluginID].plugin_name])
+      };
+      const sorted = toSort.sort(sortByName);
+      setPluginSortOrder(sorted);
+      setActivePluginKey(sorted[0][0]);
     }
   }, [registryData]);
 
-  let installedPluginKeys = Object.keys(installedPlugins);
-  const names = []
-  if (installedPluginKeys.length) {
-    for (const id of installedPluginKeys) {
-      const name = id.split("@");
-      names.push(name[0]);
-    }
-  }
+  // function fetchInstalledPlugins() {
+  //   ipcRenderer.invoke(ipcMainChannels.GET_SETTING, 'plugins').then(
+  //     (data) => {
+  //       if (data) {
+  //         setPlugins(data);
+  //       }
+  //     }
+  //   );
+  // }
+
+  useEffect(() => {
+  //   fetchInstalledPlugins();
+    let installedPluginNameList = [];
+    let installedPluginNameVersionList = [];
+    for (const pluginID in installedPlugins) {
+      let p = installedPlugins[pluginID];
+      if (p.hasOwnProperty('packageName')) {
+        installedPluginNameVersionList.push(p.packageName + "@" + p.version);
+        installedPluginNameList.push(p.packageName);
+      }
+    };
+    setInstalledPluginNames(installedPluginNameList);
+    setInstalledPluginNamesVersions(installedPluginNameVersionList);
+  }, [installedPlugins]);
+
+  // let installedPluginNameList = [];
+  // let installedPluginNameVersionList = [];
+  // for (const pluginID in installedPlugins) {
+  //   let p = installedPlugins[pluginID];
+  //   if (p.hasOwnProperty('packageName')) {
+  //     installedPluginNameVersionList.push(p.packageName + "@" + p.version);
+  //     installedPluginNameList.push(p.packageName);
+  //   }
+  // };
 
   function handlePluginClick(pluginKey) {
     setActivePluginKey(pluginKey);
   }
 
   const pluginList = [];
-  for (const pluginID in registryData) {
-    let p = registryData[pluginID]
+  for (const [pluginID, pluginName] of pluginSortOrder) {
     const listItem = (
       <button
         key={pluginID}
@@ -204,7 +148,7 @@ export default function PluginRegistryTab(props) {
         className={`registry-list-group-item plugin-registry-button ${activePluginKey === pluginID ? 'active' : ''}`}
         onClick={(e) => handlePluginClick(pluginID)}
       >
-        {p.plugin_name}
+        {pluginName}
       </button>
     )
     pluginList.push(listItem);
@@ -212,28 +156,45 @@ export default function PluginRegistryTab(props) {
 
   return (
     <Row>
-      <Col sm={3} className="registry-list registry-list-group">
-        {pluginList.length
-          ? (
-            <div className="d-grid">
-              {pluginList}
-            </div>
-          )
-          : (
-            <p>No plugins found</p>
-          )
-        }
-      </Col>
-      <Col sm={9} className="registry-pane">
-        {activePluginKey.length &&
-          <PluginPane
-            pluginID={activePluginKey}
-            plugin={registryData[activePluginKey]}
-            installed={names.includes(activePluginKey)}
-            installForm={installForm}
-          />
-        }
-      </Col>
+      {fetchError ? (
+        <div className="registry-fetch-error">
+          <IconContext.Provider value={{ className: 'registry-warning-icon' }}>
+            <MdOutlineWarningAmber />
+          </IconContext.Provider>
+          <p>
+            {t(`An error occurred when loading the Plugin Registry data.
+              Please check your internet connection, then try again.
+              If the problem persists, consider reporting it on the NatCap Community Forum.`)}
+          </p>
+        </div>
+      ) : (
+        <>
+          <Col sm={3} className="registry-list registry-list-group">
+            {pluginList.length
+              ? (
+                <div className="d-grid">
+                  {pluginList}
+                </div>
+              )
+              : (
+                <p>No plugins found</p>
+              )
+            }
+          </Col>
+          <Col sm={9} className="registry-pane">
+            {activePluginKey.length &&
+              <PluginRegistryDetailPane
+                key={`${activePluginKey}-details`}
+                pluginID={activePluginKey}
+                plugin={registryData[activePluginKey]}
+                installedPluginNames={installedPluginNames}
+                installedPluginNamesVersions={installedPluginNamesVersions}
+                updateInvestList={updateInvestList}
+              />
+            }
+          </Col>
+        </>
+      )}
     </Row>
   );
 }
