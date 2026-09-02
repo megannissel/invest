@@ -17,7 +17,7 @@ import { ipcMainChannels } from '../../../../../main/ipcMainChannels';
 
 const { ipcRenderer } = window.Workbench.electron;
 
-export default function PluginRegistryDetailPane(props) {
+export default function PluginDetailPane(props) {
   const {
     pluginID,
     plugin,
@@ -33,8 +33,6 @@ export default function PluginRegistryDetailPane(props) {
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
   const [needsMSVC, setNeedsMSVC] = useState(false);
-  // const [isInstalledPackage, setIsInstalledPackage] = useState(false);
-  // const [isInstalledVersion, setIsInstalledVersion] = useState(false);
   
   const registryBaseURL = "https://natcap.github.io/invest-plugin-registry/plugins/"
   const pluginTypes = {
@@ -59,17 +57,6 @@ export default function PluginRegistryDetailPane(props) {
       setUserAcknowledgmentError(false);
     }
   }, [userAcknowledgment]);
-
-  // useEffect(() => {
-  //   let version = plugin.version;
-    
-  //   if (installedPluginNamesVersions.includes(pluginID + '@' + version)) {
-  //     setIsInstalledPackage(true);
-  //     setIsInstalledVersion(true);
-  //   } else if (installedPluginNames.includes(pluginID)) {
-  //     setIsInstalledPackage(true);
-  //   }
-  // }, [installedPluginNames, installedPluginNamesVersions]);
 
   const handleAddPluginClick = () => {
     clearFormErrors();
@@ -116,7 +103,10 @@ export default function PluginRegistryDetailPane(props) {
           <IconContext.Provider value={{ className: 'react-icons' }}>
             <BsExclamationCircle />
           </IconContext.Provider>
-          <span><b>Note:</b> A different version of this plugin is already installed.</span>
+          <span>
+            <b>{t('Note: ')}</b>
+            {t('A different version of this plugin is already installed.')}
+          </span>
         </div>
       }
       <Form aria-labelledby="add-plugin-form-title">
@@ -237,7 +227,7 @@ export default function PluginRegistryDetailPane(props) {
         <IconContext.Provider value={{ className: 'react-icons' }}>
           <BsCheckCircle />
         </IconContext.Provider>
-        <span>This plugin is installed!</span>
+        <span>{t('This plugin is installed!')}</span>
       </div>
     </>
   );

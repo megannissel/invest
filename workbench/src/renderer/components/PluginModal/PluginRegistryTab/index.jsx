@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 
-import PluginRegistryDetailPane from './PluginRegistryDetailPane';
+import PluginDetailPane from './PluginDetailPane';
 
 export default function PluginRegistryTab(props) {
   const {
@@ -84,7 +84,7 @@ export default function PluginRegistryTab(props) {
       </Col>
       <Col sm={9} className="registry-pane">
         {activePluginKey.length &&
-          <PluginRegistryDetailPane
+          <PluginDetailPane
             key={activePluginKey}
             pluginID={activePluginKey}
             plugin={registryData[activePluginIndex]}

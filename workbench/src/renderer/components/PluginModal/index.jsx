@@ -27,7 +27,7 @@ import { openLinkInBrowser } from '../../utils';
 import { ipcMainChannels } from '../../../main/ipcMainChannels';
 
 import { mockRegistryData } from './mockRegistryData';
-import PluginRegistryTab from './PluginRegistryPane';
+import PluginRegistryTab from './PluginRegistryTab';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
 
@@ -130,7 +130,7 @@ export default function PluginModal(props) {
 
         // MOCKING FOR NEW DATA STRUCTURE:
         let pluginJSON = mockRegistryData;
-        let sortedPlugins = pluginJSON.sort(sortByName);
+        let sortedPlugins = pluginJSON.data.sort(sortByName);
         // END MOCKING FOR NEW DATA STRUCTURE
 
         const cacheData = Object({
