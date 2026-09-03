@@ -328,24 +328,3 @@ export async function setGeoMetaMakerProfile(payload) {
       .catch((error) => logger.error(error.stack))
   );
 }
-
-/**
- * Get plugin data from the Plugin Registry.
- *
- * @returns {Promise} resolves object
- */
-export async function getPluginRegistryData() {
-  const port = await getCorePort();
-  return (
-    window.fetch(`${HOSTNAME}:${port}/${PREFIX}/fetch_plugin_registry_data`, {
-      method: 'get',
-    })
-      .then((response) => response.json())
-      .then((pluginJSON) => {
-          let pluginData = pluginJSON.data;
-          console.log(pluginData);
-          return pluginData;
-      })
-      .catch((error) => logger.error(error.stack))
-  );
-}

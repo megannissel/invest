@@ -311,18 +311,3 @@ def set_geometamaker_profile():
         'message': 'Metadata profile saved',
         'error': False
     }
-
-
-@app.route(f'/{PREFIX}/fetch_plugin_registry_data', methods=['GET'])
-def fetch_plugin_registry_data():
-    """Fetch plugin JSON from the Plugin Registry site."""
-#    registry_url = "https://natcap.github.io/invest-plugin-registry/metadata.json"
-#    resp = requests.get(registry_url)
-#    if resp.ok:
-#        plugin_json = resp.json()
-#        LOGGER.debug(plugin_json)
-#        return plugin_json
-    filepath = "/Users/megannissel/Downloads/plugins_metadata.json"
-    with open(filepath) as f:
-        plugin_json = json.load(f)
-        return plugin_json
