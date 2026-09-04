@@ -62,7 +62,7 @@ export default function PluginModal(props) {
   const [activePluginIndex, setActivePluginIndex] = useState(0);
   const [fetchError, setFetchError] = useState(false);
 
-  const registryMetadataURL = "https://natcap.github.io/invest-plugin-registry/metadata.json";
+  const registryMetadataURL = "https://natcap.github.io/invest-plugin-registry/workbench_metadata.json";
   const dataCacheKey = "registryData";
   const cacheTimeout = 1000 * 60 * 60 * 24; // 24 hours
 
@@ -120,17 +120,12 @@ export default function PluginModal(props) {
       console.log('Cache miss; fetching data...');
       try {
         // Fetch data from the Registry if not cached
-        // const response = await fetch(registryMetadataURL);
-        // if (!response.ok) {
-        //   throw new Error(`Response status: ${response.status}`);
-        // }
-        // const pluginJSON = await response.json();
-        // const sortedPlugins = pluginJSON.data.sort(sortByName);
-
-        // MOCKING FOR NEW DATA STRUCTURE:
-        let pluginJSON = mockRegistryData;
-        let sortedPlugins = pluginJSON.data.sort(sortByName);
-        // END MOCKING FOR NEW DATA STRUCTURE
+        const response = await fetch(registryMetadataURL);
+        if (!response.ok) {
+          throw new Error(`Response status: ${response.status}`);
+        }
+        const pluginJSON = await response.json();
+        const sortedPlugins = pluginJSON.data.sort(sortByName);
 
         const cacheData = Object({
           'data': sortedPlugins,
