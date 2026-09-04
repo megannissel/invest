@@ -28,6 +28,9 @@ import { ipcMainChannels } from '../../../main/ipcMainChannels';
 
 import { mockRegistryData } from './mockRegistryData';
 import PluginRegistryTab from './PluginRegistryTab';
+import AdvancedSettingsTab from './AdvancedSettingsTab';
+import InstalledPluginsTab from './InstalledPluginsTab';
+import ManualInstallTab from './ManualInstallTab';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
 
@@ -40,27 +43,17 @@ export default function PluginModal(props) {
     closeModal,
     openModal,
   } = props;
-  const [url, setURL] = useState('');
-  const [revision, setRevision] = useState('');
-  const [path, setPath] = useState('');
-  const [condaPath, setCondaPath] = useState('');
-  const [pluginEnvs, setPluginEnvs] = useState({});
+  const [statusMessage, setStatusMessage] = useState('Installing...');
+  const [needsMSVC, setNeedsMSVC] = useState(false);
 
-  const [installFrom, setInstallFrom] = useState('url');
   const [installLoading, setInstallLoading] = useState('');
   const [installErr, setInstallErr] = useState('');
   const [installErrMsg, setInstallErrMsg] = useState('');
   const [installSuccess, setInstallSuccess] = useState('');
 
-  const [userAcknowledgment, setUserAcknowledgment] = useState(false);
-  const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
-  const [pluginSourceMissingError, setPluginSourceMissingError] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
-  const [needsMSVC, setNeedsMSVC] = useState(false);
-
-  const [pluginToRemove, setPluginToRemove] = useState('');
-  const [uninstallLoading, setUninstallLoading] = useState(false);
+  const [uninstallLoading, setUninstallLoading] = useState('');
   const [uninstallErr, setUninstallErr] = useState('');
+  const [uninstallErrMsg, setUninstallErrMsg] = useState('');
   const [removalSuccess, setRemovalSuccess] = useState(false);
 
   const [plugins, setPlugins] = useState({});
@@ -72,23 +65,29 @@ export default function PluginModal(props) {
   const registryMetadataURL = "https://natcap.github.io/invest-plugin-registry/metadata.json";
   const dataCacheKey = "registryData";
   const cacheTimeout = 1000 * 60 * 60 * 24; // 24 hours
-  const manualInstallID = 'manualInstall';
 
   const handleModalClose = () => {
-    setURL('');
-    setRevision('');
-    setInstallErr('');
-    setUninstallErr('');
-    clearFormErrors();
-    setInstallSuccess(false);
-    setRemovalSuccess(false);
-    closeModal();
+    if (!installLoading) {
+      setInstallErr('');
+      setInstallErrMsg('');
+      setUninstallErr('');
+      setUninstallErrMsg('');
+      setInstallSuccess('');
+      setRemovalSuccess(false);
+      closeModal();
+    }
   };
 
-  const clearFormErrors = () => {
-    setUserAcknowledgmentError(false);
-    setPluginSourceMissingError(false);
-  };
+  const resetManualInstallFormStatus = () => {
+    setInstallErr('');
+    setInstallLoading('');
+  }
+
+  const clearUninstallErrors = () => {
+    setUninstallLoading('');
+    setUninstallErr('');
+    setUninstallErrMsg('');
+  }
 
   function sortByName(a, b) {
     if (a.plugin_name > b.plugin_name) {
@@ -171,96 +170,15 @@ export default function PluginModal(props) {
     setActivePluginIndex(registryData.findIndex(i => i.invest_package_name === pluginKey));
   }
 
-  useEffect(() => {
-    Promise.all([
-      ipcRenderer.invoke(ipcMainChannels.GET_SETTING, 'micromamba'),
-      ipcRenderer.invoke(ipcMainChannels.GET_SETTING, 'userDefinedMicromamba')
-    ]).then(([micromamba, userDefinedMicromamba]) => {
-      setCondaPath(userDefinedMicromamba || micromamba);
-    });
-    ipcRenderer.invoke(
-      ipcMainChannels.GET_SETTING, 'plugins'
-    ).then((data) => setPluginEnvs(
-      Object.fromEntries(
-        Object.keys(data).map(
-          (pluginID) => [pluginID, data[pluginID].userDefinedEnv || data[pluginID].env]
-        )
-      )
-    ))
-  }, []);
-
-  useEffect(() => {
-    clearFormErrors();
-  }, [installFrom]);
-
-  useEffect(() => {
-    if (pluginSourceMissingError) {
-      setPluginSourceMissingError(false);
-    }
-  }, [url, path]);
-
-  useEffect(() => {
-    if (userAcknowledgment) {
-      setUserAcknowledgmentError(false);
-    }
-  }, [userAcknowledgment]);
-
-  const handleAddPluginClick = () => {
-    clearFormErrors();
-    if (validateAddPluginForm()) {
-      addPlugin();
-    }
-  };
-
-  const validateAddPluginForm = () => {
-    let formValid = true;
-    if ((installFrom === 'url' && !url)
-        || (installFrom === 'path' && !path)
-    ) {
-      formValid = false;
-      setPluginSourceMissingError(true);
-    }
-    if (!userAcknowledgment) {
-      formValid = false;
-      setUserAcknowledgmentError(true);
-    }
-    return formValid;
-  };
-
-  const addPlugin = () => {
-    setInstallSuccess('');
-    setRemovalSuccess(false);
-    setInstallLoading(manualInstallID);
-    ipcRenderer.invoke(
-      ipcMainChannels.ADD_PLUGIN,
-      installFrom === 'url' ? url : undefined, // url
-      installFrom === 'url' ? revision : undefined, // revision
-      installFrom === 'path' ? path : undefined, // path
-      installFrom === 'path' ? 'plugin_local' : 'plugin_git' // source type
-    ).then(() => {
-      setInstallLoading('');
-      updateInvestList();
-      setInstallSuccess(manualInstallID);
-      // clear the input fields
-      setURL('');
-      setRevision('');
-      setPath('');
-      fetchInstalledPlugins();
-    }).catch((err) => {
-      setInstallErrMsg(err.toString());
-      setInstallErr(manualInstallID);
-    });
-  };
-
-  const addRegistryPlugin = (pluginID, githubRepo, version) => {
+  const addPlugin = (pluginID, url, revision, path, sourceType) => {
     setInstallSuccess('');
     setInstallLoading(pluginID);
     ipcRenderer.invoke(
       ipcMainChannels.ADD_PLUGIN,
-      githubRepo, // url
-      version, // revision
-      undefined, // local path; not used for Registry-based install
-      'plugin_registry' // source type
+      url,       // installFrom === 'url' ? url : undefined, // url
+      revision,  // installFrom === 'url' ? revision : undefined, // revision
+      path,      // installFrom === 'path' ? path : undefined, // path
+      sourceType // installFrom === 'path' ? 'local_path' : 'git_url' // source type
     ).then(() => {
       setInstallLoading('');
       updateInvestList();
@@ -272,28 +190,29 @@ export default function PluginModal(props) {
     });
   };
 
-  const handleResetForm = () => {
-    setInstallErr('');
-    setInstallLoading('');
-  }
-
-  const removePlugin = () => {
+  const removePlugin = (pluginToRemove) => {
     setRemovalSuccess(false);
     setInstallSuccess('');
-    setUninstallLoading(true);
+    setUninstallLoading(pluginToRemove);
     openJobs.forEach((job, tabID) => {
       if (job.modelID === pluginToRemove) {
         closeInvestModel(tabID);
       }
     });
+    // For testing success state:
+    // setRemovalSuccess(true);
+    // updateInvestList();
+    // clearUninstallErrors();
     ipcRenderer.invoke(
       ipcMainChannels.REMOVE_PLUGIN, pluginToRemove
     ).then(() => {
       setRemovalSuccess(true);
       updateInvestList();
-      setUninstallLoading(false);
+      clearUninstallErrors();
     }).catch((err) => {
-      setUninstallErr(err.toString());
+      setUninstallLoading('');
+      setUninstallErr(pluginToRemove);
+      setUninstallErrMsg(err.toString());
     });
   };
 
@@ -302,36 +221,6 @@ export default function PluginModal(props) {
     ipcRenderer.invoke(ipcMainChannels.DOWNLOAD_MSVC).then(
       openModal()
     );
-  };
-
-  const resetCondaPath = () => {
-    ipcRenderer.invoke(
-      ipcMainChannels.GET_SETTING, 'micromamba'
-    ).then((data) => {
-      setCondaPath(data);
-    });
-  };
-
-  const saveCondaPath = () => {
-    ipcRenderer.send(
-      ipcMainChannels.SET_SETTING, 'userDefinedMicromamba', condaPath
-    );
-  };
-
-  const resetPluginEnv = (pluginID) => {
-    ipcRenderer.invoke(
-      ipcMainChannels.GET_SETTING, `plugins.${pluginID}.env`
-    ).then((value) => {
-      setPluginEnvs({...pluginEnvs, [pluginID]: value});
-    });
-  };
-
-  const savePluginEnvs = () => {
-    Object.entries(pluginEnvs).forEach(([pluginID, envPath]) => {
-      ipcRenderer.send(
-        ipcMainChannels.SET_SETTING, `plugins.${pluginID}.userDefinedEnv`, envPath
-      );
-    });
   };
 
   const selectDirectory = async (event) => {
@@ -429,502 +318,12 @@ export default function PluginModal(props) {
       (data) => {
         if (data) {
           setPlugins(data);
-          setPluginToRemove(Object.keys(data)[0]);
         }
       }
     );
   }, [installLoading, uninstallLoading]);
 
   const { t } = useTranslation();
-
-  let pluginFields;
-  if (installFrom === 'url') {
-    pluginFields = (
-      <Row>
-        <Form.Group as={Col} xs={7}>
-          <Form.Label htmlFor="url">{t('Git URL')}</Form.Label>
-          <Form.Control
-            id="url"
-            type="text"
-            placeholder="https://github.com/owner/repo.git"
-            value={url}
-            onChange={(event) => setURL(event.currentTarget.value)}
-            onDragOver={rejectDropHandler}
-            onDrop={rejectDropHandler}
-            aria-describedby={`about-git-url${pluginSourceMissingError ? ' url-error' : ''}`}
-          />
-          <Form.Text
-            as="span"
-            muted
-            id="about-git-url"
-            className="plugin-form-text text-italic"
-          >
-            {t('Default branch used unless otherwise specified.')}
-          </Form.Text>
-          {
-            pluginSourceMissingError
-            &&
-            <Form.Text
-              as="span"
-              id="url-error"
-              className="plugin-error plugin-source-missing-error"
-            >
-              {t('Error: URL is required.')}
-            </Form.Text>
-          }
-        </Form.Group>
-        <Form.Group as={Col}>
-          <Form.Label htmlFor="branch">{t('Branch, tag, or commit')}</Form.Label>
-          <Form.Control
-            id="branch"
-            type="text"
-            value={revision}
-            onChange={(event) => setRevision(event.currentTarget.value)}
-            aria-describedby="about-branch-tag-commit"
-          />
-          <Form.Text
-            as="span"
-            muted
-            id="about-branch-tag-commit"
-            className="plugin-form-text text-italic"
-          >
-            {t('Optional')}
-          </Form.Text>
-        </Form.Group>
-      </Row>
-    );
-  } else {
-    pluginFields = (
-      <Form.Group>
-        <Form.Label htmlFor="path">{t('Local absolute path')}</Form.Label>
-        <div className="d-flex flex-nowrap w-100">
-          <Form.Control
-            id="path"
-            type="text"
-            placeholder={window.Workbench.OS === 'darwin'
-              ? '/Users/username/path/to/plugin/'
-              : 'C:\\Documents\\path\\to\\plugin\\'}
-            value={path}
-            onChange={(event) => setPath(event.currentTarget.value)}
-            onDragOver={dragOverHandler}
-            onDragEnter={dragEnterHandler}
-            onDragLeave={dragLeavingHandler}
-            onDrop={(event) => {
-              const droppedPath = getDroppedFilePath(event);
-              if (droppedPath) {
-                setPath(droppedPath);
-              }
-            }}
-            aria-describedby={pluginSourceMissingError ? 'path-error' : ''}
-          />
-          <Button
-            aria-label="browse for plugin directory"
-            className="browse-button ms-2"
-            variant="outline-dark"
-            onClick={async (event) => setPath(await selectDirectory(event) || path)}
-          >
-            <MdFolderOpen />
-          </Button>
-        </div>
-        {
-          pluginSourceMissingError
-          &&
-          <Form.Text
-            as="span"
-            id="path-error"
-            className="plugin-error plugin-source-missing-error"
-          >
-            {t('Error: Path is required.')}
-          </Form.Text>
-        }
-      </Form.Group>
-    );
-  }
-
-  const pluginDocsURL = "https://invest.readthedocs.io/en/latest/plugins.html";
-  const pluginRegistryURL = "https://natcap.github.io/invest-plugin-registry/";
-
-  let manualInstallTab = (
-    <>
-      <div>
-        <h5 id="add-plugin-form-title" className="mb-3">{t('Manually Install a Plugin')}</h5>
-        <p>
-          {t(' For more information about creating a plugin, read our ')}
-          <a
-            href={pluginDocsURL}
-            title={pluginDocsURL}
-            aria-label={t("Plugins Developer's Guide (opens in web browser)")}
-            onClick={openLinkInBrowser}
-          >{t("Developer's Guide")}</a>.
-        </p>
-      </div>
-      <hr />
-      <Form aria-labelledby="add-plugin-form-title">
-        <Form.Group>
-          <Form.Label htmlFor="installFrom">{t('Install from')}</Form.Label>
-          <Form.Select
-            id="installFrom"
-            onChange={(event) => setInstallFrom(event.target.value)}
-            className="w-auto"
-          >
-            <option value="url">{t('git URL')}</option>
-            <option value="path">{t('local path')}</option>
-          </Form.Select>
-        </Form.Group>
-        {pluginFields}
-        <Form.Group>
-          <Form.Text
-            as="span"
-            id="plugin-installation-risk-statement"
-            className="plugin-form-text"
-          >
-            {t('As with any third-party software, installing a plugin for use with InVEST '
-              + 'may pose a risk to your data, computer, and/or network. Please make sure '
-              + 'you trust the authors of the plugin you are installing. If you are '
-              + 'installing from a git URL, you are encouraged to review the source code, '
-              + 'which can change over time.')}
-          </Form.Text>
-        </Form.Group>
-        <Form.Group>
-          <Form.Check
-            id="user-acknowledgment-checkbox"
-            label={t('I acknowledge and accept the risks associated with installing this plugin.')}
-            value={userAcknowledgment}
-            onChange={(event) => setUserAcknowledgment(event.target.checked)}
-            aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
-          />
-        </Form.Group>
-        {
-          userAcknowledgmentError
-          &&
-          <Form.Text
-            as="span"
-            id="user-acknowledgment-error"
-            className="plugin-error plugin-user-acknowledgment-error"
-          >
-            {t('Error: Before installing a plugin, you must agree to the terms by selecting the checkbox.')}
-          </Form.Text>
-        }
-        <Button
-          disabled={installLoading}
-          onClick={handleAddPluginClick}
-          aria-describedby="plugin-installation-duration-notice"
-        >
-          {
-            (installLoading == manualInstallID) ? (
-              <div className="adding-button">
-                <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
-                  <span className="visually-hidden">{t('Adding plugin')}</span>
-                </Spinner>
-                {t(statusMessage)}
-              </div>
-            ) : t('Add')
-          }
-        </Button>
-        <Form.Text
-          as="span"
-          muted
-          id="plugin-installation-duration-notice"
-          className="plugin-form-text"
-        >
-          {t('This may take several minutes.')}
-        </Form.Text>
-        <div aria-live="polite">
-          { (installSuccess == manualInstallID) &&
-            <Form.Text
-              as="span"
-              className="plugin-success"
-            >
-              <MdCheckCircleOutline />
-              {t('Successfully installed plugin')}
-            </Form.Text>
-          }
-        </div>
-      </Form>
-    </>
-  );
-  if (installErr == manualInstallID) {
-    manualInstallTab = (
-      <>
-        <h5>{t('Error installing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{installErrMsg}</div>
-        <Button
-          className="me-2"
-          onClick={handleResetForm}
-        >
-          {t('Return to form')}
-        </Button>
-        <Button
-          onClick={() => ipcRenderer.send(
-            ipcMainChannels.SHOW_ITEM_IN_FOLDER,
-            window.Workbench.ELECTRON_LOG_PATH,
-          )}
-        >
-          {t('Find workbench logs')}
-        </Button>
-      </>
-    );
-  }
-  if (needsMSVC) {
-    manualInstallTab = (
-      <>
-        <h5>
-          {t('Microsoft Visual C++ Redistributable must be installed!')}
-        </h5>
-
-        {t('Plugin features require the ')}
-        <a href="https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist">
-          {t('Microsoft Visual C++ Redistributable')}
-        </a>
-        {t('. You must download and install the redistributable before continuing.')}
-
-        <Button
-          className="mt-3"
-          onClick={downloadMSVC}
-        >
-          {t('Continue to download and install')}
-        </Button>
-      </>
-    );
-  }
-
-  let removePluginTab = (
-    <>
-      <Form aria-labelledby="remove-plugin-form-title">
-        <h5 id="remove-plugin-form-title" className="mb-3">{t('Installed Plugins')}</h5>
-        <Form.Label htmlFor="selectPluginToRemove">{t('Plugin name')}</Form.Label>
-        <Form.Select
-          id="selectPluginToRemove"
-          value={pluginToRemove}
-          onChange={(event) => setPluginToRemove(event.currentTarget.value)}
-        >
-          {
-            Object.keys(plugins).map(
-              (pluginID) => (
-                <option
-                  value={pluginID}
-                  key={pluginID}
-                >
-                  {`${plugins[pluginID].modelTitle} (${plugins[pluginID].version})`}
-                </option>
-              )
-            )
-          }
-        </Form.Select>
-        <Button
-          disabled={uninstallLoading || !Object.keys(plugins).length}
-          onClick={removePlugin}
-        >
-          {
-            uninstallLoading ? (
-              <div className="adding-button">
-                <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
-                  <span className="visually-hidden">{t('Removing...')}</span>
-                </Spinner>
-                {t('Removing...')}
-              </div>
-            ) : t('Remove')
-          }
-        </Button>
-        <div aria-live="polite">
-          {removalSuccess &&
-            <Form.Text
-              as="span"
-              className="plugin-success"
-            >
-              <MdCheckCircleOutline />
-              {t('Successfully removed plugin')}
-            </Form.Text>
-          }
-        </div>
-      </Form>
-    </>
-  );
-  if (uninstallErr) {
-    removePluginTab = (
-      <>
-        <h5>{t('Error removing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{uninstallErr}</div>
-        <Button
-          onClick={() => ipcRenderer.send(
-            ipcMainChannels.SHOW_ITEM_IN_FOLDER,
-            window.Workbench.ELECTRON_LOG_PATH,
-          )}
-        >
-          {t('Find workbench logs')}
-        </Button>
-      </>
-    );
-  }
-
-  let advancedSettingsTab = (
-    <>
-      <Form aria-labelledby="configure-conda-form-title" aria-describedby="conda-executable-description">
-        <Form.Group>
-          <h5 id="configure-conda-form-title" className="mb-3">{t('Configure conda executable (Advanced)')}</h5>
-          <Form.Text
-            as="span"
-            id="conda-executable-description"
-            className="plugin-form-text mb-3"
-          >
-            {t('InVEST is distributed with a copy of micromamba, a conda-like '
-              + 'package manager that is used to manage plugin environments. '
-              + 'If you have conda or mamba installed elsewhere on the system, '
-              + 'you can configure InVEST to use that executable instead. This '
-              + 'may be useful if you run into limitations of the included '
-              + 'micromamba distribution. You can enter an absolute path, or '
-              + 'the name of an executable that is on the system PATH.')}
-          </Form.Text>
-          <Form.Label htmlFor="condaPath">{t('Conda or mamba executable')}</Form.Label>
-          <div className="d-flex flex-nowrap w-100">
-            <Form.Control
-              id="condaPath"
-              type="text"
-              value={condaPath || ''}
-              onChange={(event) => setCondaPath(event.target.value)}
-              onDragOver={dragOverHandler}
-              onDragEnter={dragEnterHandler}
-              onDragLeave={dragLeavingHandler}
-              onDrop={(event) => {
-                const droppedPath = getDroppedFilePath(event);
-                if (droppedPath) {
-                  setCondaPath(droppedPath);
-                }
-              }}
-              className="me-1"
-            />
-            <Button
-              aria-label="browse for conda executable"
-              className="browse-button ms-1 me-1"
-              variant="outline-dark"
-              onClick={async (event) => setCondaPath(await selectFile(event) || condaPath)}
-            >
-              <MdFolderOpen />
-            </Button>
-            <Button
-              className="text-nowrap ms-1"
-              onClick={resetCondaPath}
-            >
-              {t('Reset')}
-            </Button>
-          </div>
-          <Button onClick={saveCondaPath} className="text-nowrap mt-3">
-            {t('Save')}
-          </Button>
-        </Form.Group>
-      </Form>
-      <hr />
-      <Form aria-labelledby="configure-plugin-envs-form-title" aria-describedby="plugin-env-description">
-        <Form.Group>
-        <h5 id="configure-plugin-envs-form-title" className="mb-3">{t('Configure plugin environments (Advanced)')}</h5>
-        <Form.Text
-            as="span"
-            id="plugin-env-description"
-            className="plugin-form-text mb-3"
-          >
-            {t('InVEST creates a separate conda environment for each installed '
-              + 'plugin. You may override this and provide a path to a different '
-              + 'conda environment, which may be useful for development and '
-              + 'debugging.')}
-          </Form.Text>
-        {Object.keys(plugins).map((pluginID) => (
-          <Form.Group key={`${pluginID}-env-group`}>
-            <Form.Label htmlFor={pluginID}>
-              {pluginID}
-            </Form.Label>
-            <div
-              className="d-flex flex-nowrap w-100 mb-1"
-            >
-              <Form.Control
-                id={pluginID}
-                type="text"
-                value={pluginEnvs[pluginID]}
-                onChange={(event) => setPluginEnvs(
-                  {...pluginEnvs, [pluginID]: event.target.value}
-                )}
-                onDragOver={dragOverHandler}
-                onDragEnter={dragEnterHandler}
-                onDragLeave={dragLeavingHandler}
-                onDrop={(event) => {
-                  const droppedPath = getDroppedFilePath(event);
-                  if (droppedPath) {
-                    setPluginEnvs({
-                      ...pluginEnvs,
-                      [pluginID]: droppedPath,
-                    });
-                  }
-                }}
-                className="me-1"
-              />
-              <Button
-                aria-label="browse for env"
-                className="browse-button ms-1 me-2"
-                variant="outline-dark"
-                onClick={async (event) => setPluginEnvs({
-                  ...pluginEnvs,
-                  [pluginID]: await selectDirectory(event) || pluginEnvs[pluginID]
-                })}
-              >
-                <MdFolderOpen />
-              </Button>
-              <Button
-                onClick={() => resetPluginEnv(pluginID)}
-                className="text-nowrap"
-              >
-                {t('Reset')}
-              </Button>
-            </div>
-          </Form.Group>
-        ))}
-        {Object.keys(pluginEnvs).length
-          ? <Button
-              onClick={savePluginEnvs}
-              className="text-nowrap mt-3">
-                {t('Save')}
-            </Button>
-          : <p>{t('No plugins to configure.')}</p>
-        }
-      </Form.Group>
-      </Form>
-    </>
-  );
-
-  let pluginRegistryTab = (
-    <>
-      {fetchError ? (
-        <div className="registry-fetch-error">
-          <IconContext.Provider value={{ className: 'registry-warning-icon' }}>
-            <MdOutlineWarningAmber />
-          </IconContext.Provider>
-          <p>
-            {t(`An error occurred when loading the Plugin Registry data.
-              Please check your internet connection, then try again.
-              If the problem persists, consider reporting it on the NatCap Community Forum.`)}
-          </p>
-          <Button
-            className="me-2"
-            onClick={handleRetryFetchRegistryData}
-          >
-            {t('Retry')}
-          </Button>
-        </div>
-      ) : (
-        <PluginRegistryTab
-          registryData={registryData}
-          activePluginKey={activePluginKey}
-          activePluginIndex={activePluginIndex}
-          handlePluginClick={handlePluginClick}
-          fetchError={fetchError}
-          installedPlugins={plugins}
-          addRegistryPlugin={addRegistryPlugin}
-          installLoading={installLoading}
-          installErr={installErr}
-          installErrMsg={installErrMsg}
-          installSuccess={installSuccess}
-        />
-      )}
-    </>
-  );
 
   let modalBody = (
     <Modal.Body>
@@ -949,16 +348,81 @@ export default function PluginModal(props) {
           <Col sm={10}>
             <Tab.Content>
               <Tab.Pane eventKey="registry">
-                {pluginRegistryTab}
+                {fetchError ? (
+                  <div className="registry-fetch-error">
+                    <IconContext.Provider value={{ className: 'registry-warning-icon' }}>
+                      <MdOutlineWarningAmber />
+                    </IconContext.Provider>
+                    <p>
+                      {t(`An error occurred when loading the Plugin Registry data.
+                        Please check your internet connection, then try again.
+                        If the problem persists, consider reporting it on the NatCap Community Forum.`)}
+                    </p>
+                    <Button
+                      className="me-2"
+                      onClick={handleRetryFetchRegistryData}
+                    >
+                      {t('Retry')}
+                    </Button>
+                  </div>
+                ) : (
+                  <PluginRegistryTab
+                    registryData={registryData}
+                    activePluginKey={activePluginKey}
+                    activePluginIndex={activePluginIndex}
+                    handlePluginClick={handlePluginClick}
+                    fetchError={fetchError}
+                    installedPlugins={plugins}
+                    addPlugin={addPlugin}
+                    installLoading={installLoading}
+                    installErr={installErr}
+                    installErrMsg={installErrMsg}
+                    installSuccess={installSuccess}
+                    statusMessage={statusMessage}
+                    needsMSVC={needsMSVC}
+                    downloadMSVC={downloadMSVC}
+                  />
+                )}
               </Tab.Pane>
               <Tab.Pane eventKey="installed">
-                {removePluginTab}
+                <InstalledPluginsTab
+                  plugins={plugins}
+                  removePlugin={removePlugin}
+                  uninstallLoading={uninstallLoading}
+                  uninstallErr={uninstallErr}
+                  uninstallErrMsg={uninstallErrMsg}
+                  removalSuccess={removalSuccess}
+                />
               </Tab.Pane>
               <Tab.Pane eventKey="manual">
-                {manualInstallTab}
+                <ManualInstallTab
+                  addPlugin={addPlugin}
+                  resetManualInstallFormStatus={resetManualInstallFormStatus}
+                  installLoading={installLoading}
+                  installErr={installErr}
+                  installErrMsg={installErrMsg}
+                  installSuccess={installSuccess}
+                  statusMessage={statusMessage}
+                  needsMSVC={needsMSVC}
+                  downloadMSVC={downloadMSVC}
+                  dragOverHandler={dragOverHandler}
+                  dragEnterHandler={dragEnterHandler}
+                  dragLeavingHandler={dragLeavingHandler}
+                  selectDirectory={selectDirectory}
+                  getDroppedFilePath={getDroppedFilePath}
+                  rejectDropHandler={rejectDropHandler}
+                />
               </Tab.Pane>
               <Tab.Pane eventKey="advanced">
-                {advancedSettingsTab}
+                <AdvancedSettingsTab
+                  plugins={plugins}
+                  dragOverHandler={dragOverHandler}
+                  dragEnterHandler={dragEnterHandler}
+                  dragLeavingHandler={dragLeavingHandler}
+                  selectFile={selectFile}
+                  selectDirectory={selectDirectory}
+                  getDroppedFilePath={getDroppedFilePath}
+                />
               </Tab.Pane>
             </Tab.Content>
           </Col>

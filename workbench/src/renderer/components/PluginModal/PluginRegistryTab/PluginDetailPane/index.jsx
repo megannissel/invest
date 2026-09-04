@@ -22,17 +22,18 @@ export default function PluginDetailPane(props) {
     pluginID,
     plugin,
     installStatus,
-    addRegistryPlugin,
+    addPlugin,
     installLoading,     // true if parent installLoading val == pluginID
     installErr,         // true if parent installErr val == pluginID
     installErrMsg,
     installSuccess,     // true if parent installSuccess val == pluginID
     installDisabled,    // true if parent installLoading val && val != pluginID
+    statusMessage,
+    needsMSVC,
+    downloadMSVC,
   } = props;
-  const [statusMessage, setStatusMessage] = useState('Installing...');
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
-  const [needsMSVC, setNeedsMSVC] = useState(false);
   
   const registryBaseURL = "https://natcap.github.io/invest-plugin-registry/plugins/"
   const pluginTypes = {
@@ -61,7 +62,13 @@ export default function PluginDetailPane(props) {
   const handleAddPluginClick = () => {
     clearFormErrors();
     if (validateAddPluginForm()) {
-      addRegistryPlugin(pluginID, plugin.repository_url, plugin.version);
+      addPlugin(
+        pluginID,
+        plugin.repository_url, // url
+        plugin.version,        // revision
+        undefined,             // path, used for manual install
+        'registry'             // sourceType
+      );
     }
   };
 
@@ -74,22 +81,9 @@ export default function PluginDetailPane(props) {
     return formValid;
   };
 
-  const downloadMSVC = () => {
-    closeModal();
-    ipcRenderer.invoke(ipcMainChannels.DOWNLOAD_MSVC).then(
-      openModal()
-    );
+  const handleDownloadMSVCClick = () => {
+    downloadMSVC();
   };
-
-  useEffect(() => {
-    ipcRenderer.on('plugin-install-status', (msg) => { setStatusMessage(msg); });
-    if (window.Workbench.OS === 'win32') {
-      ipcRenderer.invoke(ipcMainChannels.HAS_MSVC).then((hasMSVC) => {
-        setNeedsMSVC(!hasMSVC);
-      });
-    }
-    return () => { ipcRenderer.removeAllListeners('plugin-install-status'); };
-  }, []);
 
   const pluginType = pluginTypes[plugin.plugin_type];
   const keywords = [pluginType].concat(plugin.keywords).join(", ");
@@ -99,7 +93,7 @@ export default function PluginDetailPane(props) {
   let installPane = (
     <>
       {(installStatus == "anotherVersionInstalled") &&
-        <div className="pt-3 plugin-version-note">
+        <div className="plugin-version-note">
           <IconContext.Provider value={{ className: 'react-icons' }}>
             <BsExclamationCircle />
           </IconContext.Provider>
@@ -156,7 +150,7 @@ export default function PluginDetailPane(props) {
                   {t(statusMessage)}
                 </div>
               )
-              : t('Add')
+              : t('Install')
             }
           </Button>
           <Form.Text
@@ -189,16 +183,16 @@ export default function PluginDetailPane(props) {
         <h5>
           {t('Microsoft Visual C++ Redistributable must be installed!')}
         </h5>
-
-        {t('Plugin features require the ')}
-        <a href="https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist">
-          {t('Microsoft Visual C++ Redistributable')}
-        </a>
-        {t('. You must download and install the redistributable before continuing.')}
-
+        <p>
+          {t('Plugin features require the ')}
+          <a href="https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist">
+            {t('Microsoft Visual C++ Redistributable')}
+          </a>
+          {t('. You must download and install the redistributable before you can install a plugin.')}
+        </p>
         <Button
           className="mt-3"
-          onClick={downloadMSVC}
+          onClick={handleDownloadMSVCClick}
         >
           {t('Continue to download and install')}
         </Button>
@@ -266,7 +260,7 @@ export default function PluginDetailPane(props) {
             <tr>
               <td className="text-end"><b>Version:</b></td>
               <td>
-                {plugin.version}
+                {plugin.version}, updated {plugin.date_last_updated}
               </td>
             </tr>
             <tr>
