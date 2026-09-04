@@ -175,13 +175,14 @@ async function installPlugin(
 /**
  * Get plugin metadata from the installed Python package,
  * and store that metadata in the Workbench's settingsStore.
- * @param  {string} micromamba      path to the micromamba executable
- * @param  {string} pluginEnvPrefix location of the plugin's micromamba env
- * @param  {string} packageName     the plugin's python package name
- * @param  {string} installString   pip install argument for the plugin
+ * @param  {string} micromamba       path to the micromamba executable
+ * @param  {string} pluginEnvPrefix  location of the plugin's micromamba env
+ * @param  {string} packageName      the plugin's python package name
+ * @param  {string} installString    pip install argument for the plugin
+ * @param  {string} pluginSourceType source (local vs registry vs non-registry)
  */
 function storePluginMetadataSync(
-  micromamba, pluginEnvPrefix, packageName, installString
+  micromamba, pluginEnvPrefix, packageName, installString, pluginSourceType
 ) {
   const modelID = execSync(
     `${micromamba} run --prefix "${pluginEnvPrefix}" ` +
@@ -210,7 +211,9 @@ function storePluginMetadataSync(
       modelTitle: modelTitle,
       type: 'plugin',
       source: installString,
+      sourceType: pluginSourceType,
       env: pluginEnvPrefix,
+      packageName: packageName,
       version: version,
     }
   );
@@ -219,7 +222,7 @@ function storePluginMetadataSync(
 export function setupAddPlugin(i18n) {
   ipcMain.handle(
     ipcMainChannels.ADD_PLUGIN,
-    async (event, url, revision, localPath) => {
+    async (event, url, revision, localPath, pluginSourceType) => {
       try {
         let pyprojectTOML;
         let installString;
@@ -294,7 +297,7 @@ export function setupAddPlugin(i18n) {
           );
           event.sender.send('plugin-install-status', i18n.t('Importing plugin...'));
           storePluginMetadataSync(
-            micromamba, pluginEnvPrefix, packageName, installString
+            micromamba, pluginEnvPrefix, packageName, installString, pluginSourceType
           );
           logger.info('successfully added plugin');
         } catch (error) {
