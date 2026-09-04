@@ -175,10 +175,10 @@ export default function PluginModal(props) {
     setInstallLoading(pluginID);
     ipcRenderer.invoke(
       ipcMainChannels.ADD_PLUGIN,
-      url,       // installFrom === 'url' ? url : undefined, // url
-      revision,  // installFrom === 'url' ? revision : undefined, // revision
-      path,      // installFrom === 'path' ? path : undefined, // path
-      sourceType // installFrom === 'path' ? 'local_path' : 'git_url' // source type
+      url,       // git url (via manual install or registry)
+      revision,  // revision (manual install) or version (registry)
+      path,      // local path (manual local install)
+      sourceType // 'local_path', 'git_url', or 'registry'
     ).then(() => {
       setInstallLoading('');
       updateInvestList();

@@ -17,10 +17,10 @@ export default function InstalledPluginsTab(props) {
   const {
     plugins,
     removePlugin,
-    uninstallLoading,
-    uninstallErr,
-    uninstallErrMsg,
-    removalSuccess,     // true or false
+    uninstallLoading,   // (str) ID of plugin being uninstalled
+    uninstallErr,       // (str) ID of plugin with an error
+    uninstallErrMsg,    // (str) error message
+    removalSuccess,     // (bool)
   } = props;
 
   const { t } = useTranslation();

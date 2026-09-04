@@ -55,7 +55,8 @@ export default function ManualInstallTab(props) {
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
   const [pluginSourceMissingError, setPluginSourceMissingError] = useState(false);
   
-  const manualInstallID = 'manualInstall';
+  const manualInstallID = "manualInstall";
+  const pluginDocsURL = "https://invest.readthedocs.io/en/latest/plugins.html";
 
   const clearFormErrors = () => {
     setUserAcknowledgmentError(false);
@@ -115,7 +116,7 @@ export default function ManualInstallTab(props) {
   };
 
   const handleResetForm = () => {
-    resetManualInstallFormStatus()
+    resetManualInstallFormStatus();
   }
 
   const { t } = useTranslation();
@@ -223,8 +224,6 @@ export default function ManualInstallTab(props) {
       </Form.Group>
     );
   }
-
-  const pluginDocsURL = "https://invest.readthedocs.io/en/latest/plugins.html";
 
   let manualInstallTab = (
     <>
