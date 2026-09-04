@@ -2,7 +2,6 @@
 import importlib
 import json
 import logging
-import requests
 
 from flask import Flask
 from flask import request
@@ -277,6 +276,16 @@ def log_model_start():
         invest_interface=payload['invest_interface'],
         model_type=payload['model_type'],  # 'core' or 'plugin'
         plugin_source=payload.get('plugin_source', None))  # source only used for plugins
+    return 'OK'
+
+
+@app.route(f'/{PREFIX}/log_plugin_registry_install', methods=['POST'])
+def log_plugin_registry_install():
+    payload = request.get_json()
+    usage._log_plugin_install(
+        package_name=payload['package_name'],
+        version=payload['version'],
+        plugin_source=payload['plugin_source'])
     return 'OK'
 
 
