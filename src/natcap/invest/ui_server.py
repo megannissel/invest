@@ -279,16 +279,6 @@ def log_model_start():
     return 'OK'
 
 
-@app.route(f'/{PREFIX}/log_plugin_registry_install', methods=['POST'])
-def log_plugin_registry_install():
-    payload = request.get_json()
-    usage._log_plugin_install(
-        package_name=payload['package_name'],
-        version=payload['version'],
-        plugin_source=payload['plugin_source'])
-    return 'OK'
-
-
 @app.route(f'/{PREFIX}/languages', methods=['GET'])
 def get_supported_languages():
     """Return a mapping of supported languages to their display names."""
