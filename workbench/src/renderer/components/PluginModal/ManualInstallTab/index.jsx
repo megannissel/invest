@@ -54,7 +54,7 @@ export default function ManualInstallTab(props) {
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
   const [pluginSourceMissingError, setPluginSourceMissingError] = useState(false);
-  
+
   const manualInstallID = "manualInstall";
   const pluginDocsURL = "https://invest.readthedocs.io/en/latest/plugins.html";
 

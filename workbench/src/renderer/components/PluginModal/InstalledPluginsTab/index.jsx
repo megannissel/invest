@@ -136,7 +136,7 @@ function InstalledPluginDetailItem(props) {
           disabled={uninstallLoading || uninstallDisabled}
           onClick={handleRemovePluginClick}
         >
-          {uninstallLoading 
+          {uninstallLoading
             ? (
               <div className="adding-button">
                 <Spinner animation="border" role="status" size="sm" className="plugin-spinner">

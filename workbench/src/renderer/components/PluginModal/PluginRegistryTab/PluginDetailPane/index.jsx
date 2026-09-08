@@ -34,7 +34,7 @@ export default function PluginDetailPane(props) {
   } = props;
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
-  
+
   const registryBaseURL = "https://natcap.github.io/invest-plugin-registry/plugins/"
   const pluginTypes = {
     "preprocessing": "Preprocessing",
@@ -176,7 +176,7 @@ export default function PluginDetailPane(props) {
       </Form>
     </>
   );
-  
+
   if (needsMSVC) {
     installPane = (
       <>

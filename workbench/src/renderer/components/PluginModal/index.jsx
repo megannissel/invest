@@ -246,18 +246,18 @@ export default function PluginModal(props) {
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.classList.remove('input-dragging');
-  
+
     if (event.currentTarget.disabled) {
       return undefined;
     }
-  
+
     const fileList = event.dataTransfer.files;
     if (fileList.length !== 1) {
       //return undefined;
       alert(t('Only drop one file at a time.')); // eslint-disable-line no-alert
       return undefined;
-    } 
-    
+    }
+
     event.currentTarget.focus();
     return getFilePath(fileList[0]);
   }
