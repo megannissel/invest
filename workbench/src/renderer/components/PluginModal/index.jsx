@@ -3,27 +3,17 @@ import PropTypes from 'prop-types';
 
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
-import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import Row from 'react-bootstrap/Row';
-import Spinner from 'react-bootstrap/Spinner';
 import Tab from 'react-bootstrap/Tab';
-import Tabs from 'react-bootstrap/Tabs';
-import TabPane from 'react-bootstrap/TabPane';
-import TabContent from 'react-bootstrap/TabContent';
-import TabContainer from 'react-bootstrap/TabContainer';
 import { useTranslation } from 'react-i18next';
 import { IconContext } from "react-icons";
 import {
-  MdCheckCircleOutline,
   MdClose,
-  MdFolderOpen,
   MdOutlineWarningAmber
 } from 'react-icons/md';
 
-import { openLinkInBrowser } from '../../utils';
 import { ipcMainChannels } from '../../../main/ipcMainChannels';
 
 import PluginRegistryTab from './PluginRegistryTab';
@@ -96,7 +86,6 @@ export default function PluginModal(props) {
   }
 
   async function fetchRegistryData() {
-    //localStorage.removeItem(dataCacheKey); // Uncomment to clear localStorage
     let cacheJSON = null;
     let cacheStale = true;
 
@@ -114,7 +103,6 @@ export default function PluginModal(props) {
         console.log('Using cached data');
         setRegistryData(cacheJSON.data);
         setFetchError(false);
-        //setFetchError(true); // Uncomment to test error state
     } else {
       console.log('Cache miss; fetching data...');
       try {
@@ -193,10 +181,6 @@ export default function PluginModal(props) {
         closeInvestModel(tabID);
       }
     });
-    // For testing success state:
-    // setRemovalSuccess(true);
-    // updateInvestList();
-    // clearUninstallErrors();
     ipcRenderer.invoke(
       ipcMainChannels.REMOVE_PLUGIN, pluginToRemove
     ).then(() => {
@@ -252,7 +236,6 @@ export default function PluginModal(props) {
 
     const fileList = event.dataTransfer.files;
     if (fileList.length !== 1) {
-      //return undefined;
       alert(t('Only drop one file at a time.')); // eslint-disable-line no-alert
       return undefined;
     }

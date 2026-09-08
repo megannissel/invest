@@ -3,30 +3,19 @@ import PropTypes from 'prop-types';
 
 import Button from 'react-bootstrap/Button';
 import Col from 'react-bootstrap/Col';
-import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
-import Modal from 'react-bootstrap/Modal';
-import Nav from 'react-bootstrap/Nav';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
-import Tab from 'react-bootstrap/Tab';
-import Tabs from 'react-bootstrap/Tabs';
-import TabPane from 'react-bootstrap/TabPane';
-import TabContent from 'react-bootstrap/TabContent';
-import TabContainer from 'react-bootstrap/TabContainer';
 import { useTranslation } from 'react-i18next';
-import { IconContext } from "react-icons";
 import {
   MdCheckCircleOutline,
-  MdClose,
   MdFolderOpen,
-  MdOutlineWarningAmber
 } from 'react-icons/md';
 
 import { openLinkInBrowser } from '../../../utils';
 import { ipcMainChannels } from '../../../../main/ipcMainChannels';
 
-const { getFilePath, ipcRenderer } = window.Workbench.electron;
+const { ipcRenderer } = window.Workbench.electron;
 
 export default function ManualInstallTab(props) {
   const {

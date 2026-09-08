@@ -35,7 +35,6 @@ export default function PluginDetailPane(props) {
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
 
-  const registryBaseURL = "https://natcap.github.io/invest-plugin-registry/plugins/"
   const pluginTypes = {
     "preprocessing": "Preprocessing",
     "postprocessing": "Postprocessing",
