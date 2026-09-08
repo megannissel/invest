@@ -26,7 +26,6 @@ import {
 import { openLinkInBrowser } from '../../utils';
 import { ipcMainChannels } from '../../../main/ipcMainChannels';
 
-import { mockRegistryData } from './mockRegistryData';
 import PluginRegistryTab from './PluginRegistryTab';
 import AdvancedSettingsTab from './AdvancedSettingsTab';
 import InstalledPluginsTab from './InstalledPluginsTab';
