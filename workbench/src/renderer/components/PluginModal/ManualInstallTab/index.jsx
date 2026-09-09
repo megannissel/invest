@@ -69,7 +69,7 @@ export default function ManualInstallTab(props) {
   }, [userAcknowledgment]);
 
   useEffect(() => {
-    if (installSuccess == manualInstallID) {
+    if (installSuccess === manualInstallID) {
       setURL('');
       setRevision('');
       setPath('');
@@ -281,7 +281,7 @@ export default function ManualInstallTab(props) {
           aria-describedby="plugin-installation-duration-notice"
         >
           {
-            (installLoading == manualInstallID) ? (
+            (installLoading === manualInstallID) ? (
               <div className="adding-button">
                 <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
                   <span className="visually-hidden">{t('Adding plugin')}</span>
@@ -300,7 +300,7 @@ export default function ManualInstallTab(props) {
           {t('This may take several minutes.')}
         </Form.Text>
         <div aria-live="polite">
-          { (installSuccess == manualInstallID) &&
+          { (installSuccess === manualInstallID) &&
             <Form.Text
               as="span"
               className="plugin-success"
@@ -313,7 +313,7 @@ export default function ManualInstallTab(props) {
       </Form>
     </>
   );
-  if (installErr == manualInstallID) {
+  if (installErr === manualInstallID) {
     manualInstallTab = (
       <>
         <h5>{t('Error installing plugin:')}</h5>

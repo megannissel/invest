@@ -23,11 +23,11 @@ export default function PluginDetailPane(props) {
     plugin,
     installStatus,
     addPlugin,
-    installLoading,     // true if parent installLoading val == pluginID
-    installErr,         // true if parent installErr val == pluginID
+    installLoading,     // true if parent installLoading val === pluginID
+    installErr,         // true if parent installErr val === pluginID
     installErrMsg,
-    installSuccess,     // true if parent installSuccess val == pluginID
-    installDisabled,    // true if parent installLoading val && val != pluginID
+    installSuccess,     // true if parent installSuccess val === pluginID
+    installDisabled,    // true if parent installLoading val && val !== pluginID
     statusMessage,
     needsMSVC,
     downloadMSVC,
@@ -91,7 +91,7 @@ export default function PluginDetailPane(props) {
 
   let installPane = (
     <>
-      {(installStatus == "anotherVersionInstalled") &&
+      {(installStatus === "anotherVersionInstalled") &&
         <div className="plugin-version-note">
           <IconContext.Provider value={{ className: 'react-icons' }}>
             <BsExclamationCircle />
@@ -229,10 +229,10 @@ export default function PluginDetailPane(props) {
     <>
       <div className="plugin-pane">
         <h5>{plugin.plugin_name}</h5>
-        <p className="plugin-description">
+        <p className="plugin-small-text">
           {plugin.description}
         </p>
-        <Table borderless size="sm" className="plugin-description plugin-table">
+        <Table borderless size="sm" className="plugin-small-text plugin-table">
           <tbody>
             <tr>
               <td className="text-end"><b>Downloads:</b></td>
@@ -304,7 +304,7 @@ export default function PluginDetailPane(props) {
         </Table>
       </div>
       <div className="install-pane registry-install-form">
-        {(installStatus == "thisVersionInstalled")
+        {(installStatus === "thisVersionInstalled")
           ? alreadyInstalledPane
           : installPane
         }

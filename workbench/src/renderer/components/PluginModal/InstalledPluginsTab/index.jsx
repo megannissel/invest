@@ -65,10 +65,10 @@ export default function InstalledPluginsTab(props) {
                 pluginID={pluginID}
                 pluginDetails={plugins[pluginID]}
                 removePlugin={removePlugin}
-                uninstallLoading={uninstallLoading == pluginID}
-                uninstallErr={uninstallErr == pluginID}
+                uninstallLoading={uninstallLoading === pluginID}
+                uninstallErr={uninstallErr === pluginID}
                 uninstallErrMsg={uninstallErrMsg}
-                uninstallDisabled={uninstallLoading && uninstallLoading != pluginID}
+                uninstallDisabled={uninstallLoading && uninstallLoading !== pluginID}
               />
             ))
           )
@@ -102,7 +102,7 @@ function InstalledPluginDetailItem(props) {
     <Row className="pt-2 pb-2 installed-plugin-row">
       <Col sm={9}>
         <h6>{pluginDetails.modelTitle} ({pluginDetails.version})</h6>
-        <ul className="list-unstyled installed-plugin-source-info">
+        <ul className="list-unstyled plugin-small-text">
           {pluginDetails.sourceType && (
             <li>
               <b>{t('Installed via: ')}</b>

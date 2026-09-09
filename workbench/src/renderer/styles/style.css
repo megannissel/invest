@@ -862,7 +862,7 @@ input[type=text]::placeholder {
   }
 }
 
-/* Manage Plugins modal */
+/* Plugin Manager modal */
 .plugin-modal {
   form {
     & > div,
@@ -928,8 +928,6 @@ code {
   font-style: italic;
 }
 
-/* Plugin Registry Cards */
-
 .plugin-modal-button {
   color: white;
   background-color: var(--palo-verde-dark);
@@ -946,7 +944,15 @@ code {
   }
 }
 
-.plugin-description {
+.react-icons {
+  vertical-align: middle;
+  color: var(--palo-verde-dark);
+  height: 1.25em;
+  width: 1.25em;
+  margin-right: 0.5em;
+}
+
+.plugin-small-text {
   font-size: 0.875rem;
 }
 
@@ -987,6 +993,11 @@ code {
     border-top: 1px solid var(--bs-modal-header-border-color);
 }
 
+.plugin-version-note {
+  display: flex;
+  align-items: center;
+}
+
 .plugin-table > tbody > tr > td {
     padding-top: 0rem;
     padding-bottom: 0rem;
@@ -1023,10 +1034,6 @@ code {
   }
 }
 
-.hidden-input {
-    display: none;
-}
-
 .registry-install-form {
   padding-top: 1rem;
   padding-bottom: 1rem;
@@ -1035,19 +1042,6 @@ code {
       margin-top: 1rem;
     }
   }
-}
-
-.react-icons {
-  vertical-align: middle;
-  color: var(--palo-verde-dark);
-  height: 1.25em;
-  width: 1.25em;
-  margin-right: 0.5em;
-}
-
-.plugin-version-note {
-  display: flex;
-  align-items: center;
 }
 
 .registry-fetch-error {
@@ -1067,8 +1061,4 @@ code {
 
 .installed-plugin-row {
   border-top: 1px solid var(--bs-modal-header-border-color);
-}
-
-.installed-plugin-source-info {
-  font-size: 0.875rem;
 }

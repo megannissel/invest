@@ -93,11 +93,11 @@ export default function PluginRegistryTab(props) {
             plugin={registryData[activePluginIndex]}
             installStatus={getInstallStatus(registryData[activePluginIndex])}
             addPlugin={addPlugin}
-            installLoading={installLoading == activePluginKey}
-            installErr={installErr == activePluginKey}
+            installLoading={installLoading === activePluginKey}
+            installErr={installErr === activePluginKey}
             installErrMsg={installErrMsg}
-            installSuccess={installSuccess == activePluginKey}
-            installDisabled={installLoading && installLoading != activePluginKey}
+            installSuccess={installSuccess === activePluginKey}
+            installDisabled={installLoading && installLoading !== activePluginKey}
             statusMessage={statusMessage}
             needsMSVC={needsMSVC}
             downloadMSVC={downloadMSVC}
