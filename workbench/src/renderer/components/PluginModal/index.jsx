@@ -154,6 +154,7 @@ export default function PluginModal(props) {
 
   const addPlugin = (pluginID, url, revision, path, sourceType) => {
     setInstallSuccess('');
+    setRemovalSuccess(false);
     setInstallLoading(pluginID);
     ipcRenderer.invoke(
       ipcMainChannels.ADD_PLUGIN,

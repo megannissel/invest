@@ -49,8 +49,8 @@ export default function InstalledPluginsTab(props) {
         <h5 id="installed-plugin-list-title" className="mb-3">{t('Installed Plugins')}</h5>
         {removalSuccess && (
           <>
-            <div className="pt-3 pb-3 plugin-version-note">
-              <IconContext.Provider value={{ className: 'react-icons' }}>
+            <div aria-live="polite" className="pt-3 pb-3 plugin-success-message">
+              <IconContext.Provider value={{ className: 'react-icons react-icons-white' }}>
                 <BsCheckCircle />
               </IconContext.Provider>
               <span>{t('Plugin successfully removed!')}</span>

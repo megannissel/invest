@@ -7,10 +7,9 @@ import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 import { useTranslation } from 'react-i18next';
-import {
-  MdCheckCircleOutline,
-  MdFolderOpen,
-} from 'react-icons/md';
+import { IconContext } from "react-icons";
+import { BsCheckCircle } from "react-icons/bs";
+import { MdFolderOpen } from 'react-icons/md';
 
 import { openLinkInBrowser } from '../../../utils';
 import { ipcMainChannels } from '../../../../main/ipcMainChannels';
@@ -268,7 +267,7 @@ export default function ManualInstallTab(props) {
           userAcknowledgmentError
           &&
           <Form.Text
-            as="span"
+            as="p"
             id="user-acknowledgment-error"
             className="plugin-error plugin-user-acknowledgment-error"
           >
@@ -299,18 +298,17 @@ export default function ManualInstallTab(props) {
         >
           {t('This may take several minutes.')}
         </Form.Text>
-        <div aria-live="polite">
-          { (installSuccess === manualInstallID) &&
-            <Form.Text
-              as="span"
-              className="plugin-success"
-            >
-              <MdCheckCircleOutline />
-              {t('Successfully installed plugin')}
-            </Form.Text>
-          }
-        </div>
       </Form>
+      { (installSuccess === manualInstallID) &&
+        <>
+          <div aria-live="polite" className="mt-3 pt-3 pb-3 plugin-success-message">
+            <IconContext.Provider value={{ className: 'react-icons react-icons-white' }}>
+              <BsCheckCircle />
+            </IconContext.Provider>
+            <span>{t('Successfully installed plugin!')}</span>
+          </div>
+        </>
+      }
     </>
   );
   if (installErr === manualInstallID) {

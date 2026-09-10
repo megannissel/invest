@@ -10,7 +10,6 @@ import Table from 'react-bootstrap/Table';
 import { IconContext } from "react-icons";
 import { BsExclamationCircle } from "react-icons/bs";
 import { BsCheckCircle } from "react-icons/bs";
-import { MdCheckCircleOutline } from "react-icons/md";
 
 import { openLinkInBrowser } from '../../../../utils';
 import { ipcMainChannels } from '../../../../../main/ipcMainChannels';
@@ -160,17 +159,6 @@ export default function PluginDetailPane(props) {
           >
             {t('This may take several minutes.')}
           </Form.Text>
-          <div aria-live="polite">
-            {installSuccess &&
-              <Form.Text
-                as="span"
-                className="plugin-success"
-              >
-                <BsCheckCircle />
-                {t('Successfully installed plugin')}
-              </Form.Text>
-            }
-          </div>
         </Form.Group>
       </Form>
     </>
