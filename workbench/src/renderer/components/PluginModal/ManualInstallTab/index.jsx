@@ -105,6 +105,7 @@ export default function ManualInstallTab(props) {
 
   const handleResetForm = () => {
     resetManualInstallFormStatus();
+    setUserAcknowledgment(false);
   }
 
   const { t } = useTranslation();
@@ -133,9 +134,7 @@ export default function ManualInstallTab(props) {
           >
             {t('Default branch used unless otherwise specified.')}
           </Form.Text>
-          {
-            pluginSourceMissingError
-            &&
+          {pluginSourceMissingError &&
             <Form.Text
               as="span"
               id="url-error"
@@ -198,9 +197,7 @@ export default function ManualInstallTab(props) {
             <MdFolderOpen />
           </Button>
         </div>
-        {
-          pluginSourceMissingError
-          &&
+        {pluginSourceMissingError &&
           <Form.Text
             as="span"
             id="path-error"
@@ -231,14 +228,22 @@ export default function ManualInstallTab(props) {
       <Form aria-labelledby="add-plugin-form-title">
         <Form.Group>
           <Form.Label htmlFor="installFrom">{t('Install from')}</Form.Label>
-          <Form.Select
-            id="installFrom"
-            onChange={(event) => setInstallFrom(event.target.value)}
-            className="w-auto"
-          >
-            <option value="url">{t('git URL')}</option>
-            <option value="path">{t('local path')}</option>
-          </Form.Select>
+          <Form.Check
+            type="radio"
+            id="installFromURL"
+            name="installFrom"
+            label={t('git URL')}
+            checked={installFrom === "url"}
+            onChange={(event) => setInstallFrom("url")}
+          />
+          <Form.Check
+            type="radio"
+            id="installFromLocal"
+            name="installFrom"
+            label={t('local path')}
+            checked={installFrom === "path"}
+            onChange={(event) => setInstallFrom("path")}
+          />
         </Form.Group>
         {pluginFields}
         <Form.Group>
@@ -263,9 +268,7 @@ export default function ManualInstallTab(props) {
             aria-describedby={`plugin-installation-risk-statement${userAcknowledgmentError ? ' user-acknowledgment-error' : ''}`}
           />
         </Form.Group>
-        {
-          userAcknowledgmentError
-          &&
+        {userAcknowledgmentError &&
           <Form.Text
             as="p"
             id="user-acknowledgment-error"
@@ -279,15 +282,16 @@ export default function ManualInstallTab(props) {
           onClick={handleAddPluginClick}
           aria-describedby="plugin-installation-duration-notice"
         >
-          {
-            (installLoading === manualInstallID) ? (
+          {(installLoading === manualInstallID)
+            ? (
               <div className="adding-button">
                 <Spinner animation="border" role="status" size="sm" className="plugin-spinner">
                   <span className="visually-hidden">{t('Adding plugin')}</span>
                 </Spinner>
                 {t(statusMessage)}
               </div>
-            ) : t('Install')
+            )
+            : t('Install')
           }
         </Button>
         <Form.Text
@@ -299,7 +303,7 @@ export default function ManualInstallTab(props) {
           {t('This may take several minutes.')}
         </Form.Text>
       </Form>
-      { (installSuccess === manualInstallID) &&
+      {(installSuccess === manualInstallID) &&
         <>
           <div aria-live="polite" className="mt-3 pt-3 pb-3 plugin-success-message">
             <IconContext.Provider value={{ className: 'react-icons react-icons-white' }}>
