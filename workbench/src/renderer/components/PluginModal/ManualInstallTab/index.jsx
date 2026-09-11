@@ -294,14 +294,28 @@ export default function ManualInstallTab(props) {
             : t('Install')
           }
         </Button>
-        <Form.Text
-          as="span"
-          muted
-          id="plugin-installation-duration-notice"
-          className="plugin-form-text"
-        >
-          {t('This may take several minutes.')}
-        </Form.Text>
+        {installLoading && installLoading !== manualInstallID
+          ? (
+            <Form.Text
+              as="span"
+              muted
+              id={`plugin-installation-disabled-notice`}
+              className="plugin-form-text"
+            >
+              {t('An installation is currently in progress. Please wait for it to complete '
+                + 'before installing another plugin.')}
+            </Form.Text>
+          )
+          : (
+            <Form.Text
+              as="span"
+              muted
+              id={`plugin-installation-duration-notice`}
+              className="plugin-form-text"
+            >
+              {t('This may take several minutes.')}
+            </Form.Text>
+        )}
       </Form>
       {(installSuccess === manualInstallID) &&
         <>

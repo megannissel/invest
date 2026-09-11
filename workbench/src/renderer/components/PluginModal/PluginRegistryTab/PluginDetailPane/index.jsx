@@ -151,14 +151,28 @@ export default function PluginDetailPane(props) {
               : t('Install')
             }
           </Button>
-          <Form.Text
-            as="span"
-            muted
-            id={`${pluginID}-plugin-installation-duration-notice`}
-            className="plugin-form-text"
-          >
-            {t('This may take several minutes.')}
-          </Form.Text>
+          {installDisabled
+            ? (
+              <Form.Text
+                as="span"
+                muted
+                id={`${pluginID}-plugin-installation-disabled-notice`}
+                className="plugin-form-text"
+              >
+                {t('An installation is currently in progress. Please wait for it to complete '
+                  + 'before installing another plugin.')}
+              </Form.Text>
+            )
+            : (
+              <Form.Text
+                as="span"
+                muted
+                id={`${pluginID}-plugin-installation-duration-notice`}
+                className="plugin-form-text"
+              >
+                {t('This may take several minutes.')}
+              </Form.Text>
+          )}
         </Form.Group>
       </Form>
     </>
