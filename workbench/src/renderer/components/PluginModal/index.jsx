@@ -16,10 +16,11 @@ import {
 
 import { ipcMainChannels } from '../../../main/ipcMainChannels';
 
-import PluginRegistryTab from './PluginRegistryTab';
+import AboutTab from './AboutTab';
 import AdvancedSettingsTab from './AdvancedSettingsTab';
 import InstalledPluginsTab from './InstalledPluginsTab';
 import ManualInstallTab from './ManualInstallTab';
+import PluginRegistryTab from './PluginRegistryTab';
 
 const { getFilePath, ipcRenderer } = window.Workbench.electron;
 
@@ -310,16 +311,19 @@ export default function PluginModal(props) {
           <Col sm={2} className="plugin-modal-nav">
             <Nav variant="pills" className="flex-column">
               <Nav.Item className="plugin-modal-nav-item">
-                <Nav.Link eventKey="registry">Plugin Registry</Nav.Link>
+                <Nav.Link eventKey="registry">{t('Plugin Registry')}</Nav.Link>
               </Nav.Item>
               <Nav.Item className="plugin-modal-nav-item">
-                <Nav.Link eventKey="installed">Installed Plugins</Nav.Link>
+                <Nav.Link eventKey="installed">{t('Installed Plugins')}</Nav.Link>
               </Nav.Item>
               <Nav.Item className="plugin-modal-nav-item">
-                <Nav.Link eventKey="manual">Manual Install</Nav.Link>
+                <Nav.Link eventKey="manual">{t('Manual Install')}</Nav.Link>
               </Nav.Item>
               <Nav.Item className="plugin-modal-nav-item">
-                <Nav.Link eventKey="advanced">Advanced Settings</Nav.Link>
+                <Nav.Link eventKey="advanced">{t('Advanced Settings')}</Nav.Link>
+              </Nav.Item>
+              <Nav.Item className="plugin-modal-nav-item">
+                <Nav.Link eventKey="about">{t('About Plugins')}</Nav.Link>
               </Nav.Item>
             </Nav>
           </Col>
@@ -401,6 +405,9 @@ export default function PluginModal(props) {
                   selectDirectory={selectDirectory}
                   getDroppedFilePath={getDroppedFilePath}
                 />
+              </Tab.Pane>
+              <Tab.Pane eventKey="about">
+                <AboutTab />
               </Tab.Pane>
             </Tab.Content>
           </Col>

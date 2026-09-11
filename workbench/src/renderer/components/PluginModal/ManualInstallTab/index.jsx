@@ -215,7 +215,7 @@ export default function ManualInstallTab(props) {
       <div>
         <h5 id="add-plugin-form-title" className="mb-3">{t('Manually Install a Plugin')}</h5>
         <p>
-          {t(' For more information about creating a plugin, read our ')}
+          {t('For more information about creating a plugin, read our ')}
           <a
             href={pluginDocsURL}
             title={pluginDocsURL}
