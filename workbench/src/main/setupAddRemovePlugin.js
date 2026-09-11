@@ -9,6 +9,7 @@ import { Downloader } from 'nodejs-file-downloader';
 
 import { logger } from './logger';
 import { ipcMainChannels } from './ipcMainChannels';
+import ELECTRON_DEV_MODE from './isDevMode';
 import { settingsStore } from './settingsStore';
 import { shutdownPythonProcess } from './createPythonFlaskProcess';
 
@@ -219,6 +220,38 @@ function storePluginMetadataSync(
   );
 }
 
+/**
+ * Log installation of plugin from the Plugin Registry.
+ * @param  {string} projectName project.name in pyproject.toml (used as ID by Registry)
+ * @param  {string} packageName tool.natcap.invest.package_name (used by InVEST)
+ * @param  {string} version     the version of the plugin
+ */
+async function logRegistryPluginInstall(projectName, packageName, version) {
+  logger.info('logging Plugin Registry plugin installation');
+  // START DEBUGGING:
+  console.log(`project_name: ${projectName}`);
+  console.log(`invest_package_name: ${packageName}`);
+  console.log(`version: ${version}`);
+  // END DEBUGGING
+
+  // TO DO: Plug in Cloud Run function endpoint
+  try {
+    const response = await fetch("loggingURLGoesHere", {
+      method: "POST",
+      body: JSON.stringify({
+        project_name: projectName,
+        invest_package_name: packageName,
+        version: version
+      })
+    });
+    if (!response.ok) {
+      throw new Error(`Logging failed with non-OK status: ${response.status}`);
+    }
+  } catch (error) {
+    console.log(error.message);
+  }
+}
+
 export function setupAddPlugin(i18n) {
   ipcMain.handle(
     ipcMainChannels.ADD_PLUGIN,
@@ -283,6 +316,7 @@ export function setupAddPlugin(i18n) {
         // Access plugin metadata from the pyproject.toml
         const condaDeps = pyprojectTOML.tool.natcap.invest.conda_dependencies;
         const packageName = pyprojectTOML.tool.natcap.invest.package_name;
+        const projectName = pyprojectTOML.project.name;
 
         // Create a conda env containing the plugin and its dependencies
         // use timestamp to ensure a unique path
@@ -300,6 +334,18 @@ export function setupAddPlugin(i18n) {
             micromamba, pluginEnvPrefix, packageName, installString, pluginSourceType
           );
           logger.info('successfully added plugin');
+
+          // TO DO: Log the plugin installation!
+          if (pluginSourceType === 'registry') {
+            logRegistryPluginInstall(projectName, packageName, revision);
+          }
+          // Commented out for testing purposes; ultimately we'll only want to log
+          // installations from the production Workbench
+          // if (!ELECTRON_DEV_MODE && !process.env.PUPPETEER
+          //     && pluginSourceType === 'registry') {
+          //   // revision will always equate to version for registry plugins
+          //   logRegistryPluginInstall(projectName, packageName, revision);
+          // }
         } catch (error) {
           logger.info('Cleaning up failed installation environment.');
           await spawnWithLogging(
