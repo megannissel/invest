@@ -23,25 +23,41 @@ import {
   InstallButton,
   NeedsMSVC,
 } from '../../PluginModalUtils';
-import { sourceTypeRegistry } from '../../../PluginModal';
+import {
+  sourceTypeRegistry,
+} from '../../../PluginModal';
+import {
+  pluginInstall,
+  addRemoveLoading,
+  addRemoveSuccess,
+  addRemoveError,
+} from '../../../../app';
 
 export default function PluginDetailPane(props) {
   const {
     pluginID,
     plugin,
-    installStatus,
+    priorInstallationStatus,
     addPlugin,
-    installLoading,     // true if parent installLoading val === pluginID
-    installErr,         // true if parent installErr val === pluginID
-    installErrMsg,
-    installSuccess,     // true if parent installSuccess val === pluginID
-    installDisabled,    // true if bool(installLoading || uninstallLoading)
+    addRemoveState,
     statusMessage,
     needsMSVC,
     downloadMSVC,
   } = props;
   const [userAcknowledgment, setUserAcknowledgment] = useState(false);
   const [userAcknowledgmentError, setUserAcknowledgmentError] = useState(false);
+  const [installStatus, setInstallStatus] = useState("None");
+
+  useEffect(() => {
+    if (
+      addRemoveState.opPluginID === pluginID &&
+      addRemoveState.opType === pluginInstall
+    ) {
+      setInstallStatus(addRemoveState.opStatus);
+    } else {
+      setInstallStatus('None');
+    }
+  }, [addRemoveState]);
 
   const pluginTypes = {
     preprocessing: "Preprocessing",
@@ -67,7 +83,7 @@ export default function PluginDetailPane(props) {
   }, [userAcknowledgment]);
 
   const handleAddPluginClick = () => {
-    if (!installDisabled) {
+    if (addRemoveState.opStatus !== addRemoveLoading) {
       clearFormErrors();
       if (validateAddPluginForm()) {
         addPlugin(
@@ -75,7 +91,7 @@ export default function PluginDetailPane(props) {
           plugin.repository_url, // url
           plugin.version,        // revision
           undefined,             // path, used for manual install
-          sourceTypeRegistry  // sourceType
+          sourceTypeRegistry     // sourceType
         );
       }
     }
@@ -97,7 +113,7 @@ export default function PluginDetailPane(props) {
 
   let installPane = (
     <>
-      {(installStatus === anotherVersionInstalled) &&
+      {(priorInstallationStatus === anotherVersionInstalled) &&
         <div>
           <BsExclamationCircle className="plugin-modal-icons" />
             <span className="bold-text">{t('Note: ')}</span>
@@ -140,8 +156,8 @@ export default function PluginDetailPane(props) {
           <InstallButton
             handleAddPluginClick={handleAddPluginClick}
             pluginID={pluginID}
-            installDisabled={installDisabled}
-            installLoading={installLoading}
+            installLoading={installStatus === addRemoveLoading}
+            installDisabled={addRemoveState.opStatus === addRemoveLoading}
             statusMessage={statusMessage}
           />
         </Form.Group>
@@ -155,11 +171,13 @@ export default function PluginDetailPane(props) {
         downloadMSVC={downloadMSVC}
       />
     );
-  } else if (installErr) {
+  } else if (installStatus === addRemoveError) {
     installPane = (
       <>
         <h5>{t('Error installing plugin:')}</h5>
-        <div className="plugin-error plugin-install-remove-error">{installErrMsg}</div>
+        <div className="plugin-error plugin-install-remove-error">
+          {addRemoveState.opErrorMsg}
+        </div>
         <Button
           onClick={handleClickFindLogfiles}
         >
@@ -249,7 +267,7 @@ export default function PluginDetailPane(props) {
         </dl>
       </div>
       <div className="install-pane registry-install-form">
-        {(installStatus === thisVersionInstalled)
+        {(priorInstallationStatus === thisVersionInstalled)
           ? alreadyInstalledPane
           : installPane
         }

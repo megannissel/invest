@@ -32,6 +32,14 @@ import Changelog from './components/Changelog';
 
 const { ipcRenderer } = window.Workbench.electron;
 
+// addRemoveOpType options:
+export const pluginInstall = "install";
+export const pluginUninstall = "uninstall";
+// addRemoveStatus options:
+export const addRemoveLoading = "loading";
+export const addRemoveSuccess = "success";
+export const addRemoveError = "error";
+
 /** This component manages any application state that should persist
  * and be independent from properties of a single invest job.
  */
@@ -48,6 +56,14 @@ export default function App({isFirstRun = false, isNewVersion = false, nCPU = 1}
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [changelogDismissed, setChangelogDismissed] = useState(false);
+
+  const defaultPluginModalState = {
+    opType: null,      // install or uninstall
+    opStatus: null,    // loading, success, or error
+    opErrorMsg: null,  // error message
+    opPluginID: null,  // pluginID associated with the op
+  }
+  const [pluginModalState, setPluginModalState] = useState(defaultPluginModalState);
 
   /** Initialize the list of invest models, recent invest jobs, etc. */
   useEffect(() => {
@@ -193,6 +209,68 @@ export default function App({isFirstRun = false, isNewVersion = false, nCPU = 1}
     }
   }
 
+  const addPlugin = (pluginID, url, revision, path, sourceType) => {
+    setPluginModalState({
+      opType: pluginInstall,
+      opStatus: addRemoveLoading,
+      opErrorMsg: "",
+      opPluginID: pluginID
+    })
+    ipcRenderer.invoke(
+      ipcMainChannels.ADD_PLUGIN,
+      url,       // git url (via manual install or registry)
+      revision,  // revision (manual install) or version (registry)
+      path,      // local path (manual local install)
+      sourceType // 'local_path', 'git_url', or 'registry'
+    ).then(() => {
+      setPluginModalState({
+        opType: pluginInstall,
+        opStatus: addRemoveSuccess,
+        opErrorMsg: "",
+        opPluginID: pluginID
+      })
+      updateInvestList();
+    }).catch((err) => {
+      setPluginModalState({
+        opType: pluginInstall,
+        opStatus: addRemoveError,
+        opErrorMsg: err.toString(),
+        opPluginID: pluginID
+      })
+    });
+  };
+
+  const removePlugin = (pluginToRemove) => {
+    setPluginModalState({
+      opType: pluginUninstall,
+      opStatus: addRemoveLoading,
+      opErrorMsg: "",
+      opPluginID: pluginToRemove
+    })
+    openJobs.forEach((job, tabID) => {
+      if (job.modelID === pluginToRemove) {
+        closeInvestModel(tabID);
+      }
+    });
+    ipcRenderer.invoke(
+      ipcMainChannels.REMOVE_PLUGIN, pluginToRemove
+    ).then(() => {
+      setPluginModalState({
+        opType: pluginUninstall,
+        opStatus: addRemoveSuccess,
+        opErrorMsg: "",
+        opPluginID: pluginToRemove
+      })
+    }).catch((err) => {
+      setPluginModalState({
+        opType: pluginUninstall,
+        opStatus: addRemoveError,
+        opErrorMsg: err.toString(),
+        opPluginID: pluginToRemove
+      })
+    });
+  };
+
   const investNavItems = [];
   const investTabPanes = [];
   openJobs.forEach((job, id) => {
@@ -298,9 +376,9 @@ export default function App({isFirstRun = false, isNewVersion = false, nCPU = 1}
           show={showPluginModal}
           closeModal={() => setShowPluginModal(false)}
           openModal={() => setShowPluginModal(true)}
-          updateInvestList={updateInvestList}
-          closeInvestModel={closeInvestModel}
-          openJobs={openJobs}
+          addRemoveState={pluginModalState}
+          addPlugin={addPlugin}
+          removePlugin={removePlugin}
         />
       )}
       {showChangelog && (
